@@ -32,3 +32,7 @@ out/
 # OS
 .DS_Store
 Thumbs.db
+
+# IDEs & Tools
+.claude/
+.deepcode/
