@@ -21,7 +21,7 @@ def scrape_url(url: str) -> str:
     import requests
     from bs4 import BeautifulSoup
     try:
-        headers = {'User-Agent': 'Mozilla/5.0 (compatible; HorizonAI/1.0)'}
+        headers = {'User-Agent': 'Mozilla/5.0 (compatible; EmberAI/1.0)'}
         resp = requests.get(url.strip(), headers=headers, timeout=10)
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, 'html.parser')
@@ -171,7 +171,7 @@ def call_model(state: State, config: RunnableConfig):
     
     # We prepend a system message instructing the agent on its persona
     system_msg = SystemMessage(
-        content="You are Horizon AI, an advanced agentic AI system with a multi-layer memory architecture. "
+        content="You are Ember AI, an advanced agentic AI system with a multi-layer memory architecture. "
                 "You assist the user with tasks and can draw on episodic, semantic, and procedural memories. "
                 "You have access to tools: web search (google_search), URL scraping (scrape_url), and image generation (generate_image). "
                 "If the user asks for current events or facts you're unsure about, use google_search. "

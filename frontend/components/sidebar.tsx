@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import { usePathname } from "next/navigation";
 import type { ChatSummary } from "@/lib/api";
 
 /* --- Inline icons (no external icon lib) ------------------------------------ */
@@ -61,11 +62,12 @@ export function Sidebar({
   onOpenCustomize?: () => void;
 }) {
   const NAV_ITEMS = [
-    { key: "chats", label: "Chats", Icon: I.chats, onClick: undefined },
-    { key: "projects", label: "Projects", Icon: I.projects, onClick: undefined },
+    { key: "chats", label: "Chats", Icon: I.chats, href: "/reflect" },
+    { key: "projects", label: "Projects", Icon: I.projects, href: "/projects" },
     { key: "customize", label: "Customize", Icon: I.customize, onClick: onOpenCustomize },
-  ] as const;
+  ];
 
+  const pathname = usePathname();
   const [open, setOpen] = useState(false); // mobile drawer
 
   const content = (
@@ -96,31 +98,57 @@ export function Sidebar({
 
       {/* Primary nav */}
       <nav className="mt-3 space-y-0.5 px-3">
-        {NAV_ITEMS.map(({ key, label, Icon, onClick }) => (
-          <button
-            key={key}
-            onClick={
-              onClick
-                ? () => {
-                    onClick();
-                    setOpen(false);
-                  }
-                : undefined
-            }
-            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-muted transition-colors hover:bg-raised/60 hover:text-foreground"
-            title={onClick ? label : `${label} (coming soon)`}
-          >
-            <Icon className="text-faint" />
-            {label}
-          </button>
-        ))}
+        {NAV_ITEMS.map(({ key, label, Icon, onClick, href }) => {
+          const isActive = href && (pathname === href || (href !== "/" && pathname.startsWith(href)));
+          
+          if (href) {
+            return (
+              <Link
+                key={key}
+                href={href}
+                onClick={() => setOpen(false)}
+                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[14px] font-medium transition-colors ${
+                  isActive
+                    ? "bg-foreground text-void shadow-sm"
+                    : "text-muted hover:bg-raised/60 hover:text-foreground"
+                }`}
+                title={label}
+              >
+                <Icon className={isActive ? "text-void" : "text-faint"} />
+                {label}
+              </Link>
+            );
+          }
+          return (
+            <button
+              key={key}
+              onClick={
+                onClick
+                  ? () => {
+                      onClick();
+                      setOpen(false);
+                    }
+                  : undefined
+              }
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[14px] font-medium text-muted transition-colors hover:bg-raised/60 hover:text-foreground"
+              title={onClick ? label : `${label} (coming soon)`}
+            >
+              <Icon className="text-faint" />
+              {label}
+            </button>
+          );
+        })}
         <Link
           href="/code"
           onClick={() => setOpen(false)}
-          className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-muted transition-colors hover:bg-raised/60 hover:text-foreground"
+          className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[14px] font-medium transition-colors ${
+            pathname?.startsWith("/code")
+              ? "bg-foreground text-void shadow-sm"
+              : "text-muted hover:bg-raised/60 hover:text-foreground"
+          }`}
           title="Ember Code"
         >
-          <I.code className="text-faint" />
+          <I.code className={pathname?.startsWith("/code") ? "text-void" : "text-faint"} />
           Ember Code
         </Link>
       </nav>

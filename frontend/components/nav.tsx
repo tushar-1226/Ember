@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 const LINKS = [
   { label: "Reflect", href: "/reflect" },
   { label: "Garden", href: "/garden" },
+  { label: "Flower", href: "/flower" },
   { label: "Story", href: "/#story" },
 ];
 
@@ -19,6 +20,7 @@ export function Nav() {
   if (
     pathname?.startsWith("/reflect") ||
     pathname?.startsWith("/settings") ||
+    pathname?.startsWith("/projects") ||
     pathname?.startsWith("/code")
   )
     return null;
@@ -30,14 +32,14 @@ export function Nav() {
       transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
       className="fixed top-0 inset-x-0 z-50"
     >
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
+      <div className="flex w-full items-center justify-between px-8 py-5">
         {/* Wordmark */}
         <Link href="/" className="group flex items-center gap-2" data-cursor="hot">
           <span className="relative grid h-6 w-6 place-items-center">
             <span className="absolute h-2 w-2 rounded-full bg-ember-amber" />
             <span className="absolute h-6 w-6 rounded-full border border-ember-amber/25" />
           </span>
-          <span className="font-display text-lg font-semibold tracking-tight text-foreground">
+          <span className="font-display text-xl font-semibold tracking-tight text-foreground">
             Ember
           </span>
         </Link>
@@ -51,7 +53,7 @@ export function Nav() {
                 key={l.href}
                 href={l.href}
                 data-cursor="hot"
-                className={`rounded-full px-4 py-1.5 text-sm transition-colors ${
+                className={`rounded-full px-5 py-2 text-base transition-colors ${
                   active ? "text-foreground" : "text-muted hover:text-foreground"
                 }`}
               >
@@ -66,7 +68,7 @@ export function Nav() {
           <Link
             href="/reflect"
             data-cursor="hot"
-            className="hidden rounded-full bg-foreground px-4 py-2 text-sm font-medium text-void transition-transform hover:scale-[1.03] sm:inline-block"
+            className="hidden rounded-full bg-foreground px-5 py-2.5 text-base font-medium text-void transition-transform hover:scale-[1.03] sm:inline-block"
           >
             Begin
           </Link>

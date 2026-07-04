@@ -14,7 +14,7 @@ load_dotenv()
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from psycopg_pool import AsyncConnectionPool
 
-from database import init_db, POSTGRES_URL, SessionLocal, TokenUsage, UserProfile, ChatSession, ChatMessage, UploadedFile, DocumentChunk
+from database import init_db, POSTGRES_URL, SessionLocal, TokenUsage, UserProfile, ChatSession, ChatMessage, UploadedFile, DocumentChunk, Project
 from sqlalchemy import func, cast, Date
 import uuid
 from datetime import datetime
@@ -29,6 +29,15 @@ from fastapi.responses import PlainTextResponse
 async def lifespan(app: FastAPI):
     # Initialize SQLAlchemy tables
     init_db()
+    
+    # Start flower background task
+    from agent.flower import flower_background_task
+    app.state.flower_task = asyncio.create_task(flower_background_task())
+
+    # Start TTL cleanup background task
+    from agent.cleanup import cleanup_background_task
+    app.state.cleanup_task = asyncio.create_task(cleanup_background_task())
+
     # Initialize async pool and checkpointer
     app.state.pool = AsyncConnectionPool(conninfo=POSTGRES_URL, max_size=20, kwargs={"autocommit": True}, open=False)
     await app.state.pool.open()
@@ -56,8 +65,9 @@ app.add_middleware(
 class ChatRequest(BaseModel):
     message: str
     thread_id: str = "default_thread"
-    model_key: str = "glm"
+    model_key: str = "nemotron"
     temporary: bool = False  # temporary chats aren't persisted or mined for memory
+    project_id: Optional[str] = None
 
 @app.get("/models")
 async def list_models():
@@ -140,9 +150,14 @@ async def get_user_profile():
         return {"preferred_language": "Unknown", "asking_tone": "Unknown", "user_style": "Unknown"}
 
 @app.get("/chats")
-async def get_chats():
+async def get_chats(project_id: Optional[str] = None):
     with SessionLocal() as db:
-        chats = db.query(ChatSession).order_by(ChatSession.updated_at.desc()).all()
+        query = db.query(ChatSession)
+        if project_id:
+            query = query.filter(ChatSession.project_id == project_id)
+        else:
+            query = query.filter(ChatSession.project_id.is_(None))
+        chats = query.order_by(ChatSession.updated_at.desc()).all()
         return [{"id": c.id, "title": c.title, "updated_at": c.updated_at.isoformat()} for c in chats]
 
 @app.get("/chats/{session_id}")
@@ -158,6 +173,76 @@ async def delete_chat(session_id: str):
         db.query(ChatSession).filter(ChatSession.id == session_id).delete()
         db.commit()
     return {"status": "success"}
+
+# ---- Projects ----
+class ProjectCreateRequest(BaseModel):
+    title: str
+    description: str = ""
+
+class ProjectUpdateRequest(BaseModel):
+    title: str = None
+    description: str = None
+    instructions: str = None
+
+@app.get("/projects")
+async def get_projects():
+    with SessionLocal() as db:
+        projects = db.query(Project).order_by(Project.updated_at.desc()).all()
+        return [
+            {
+                "id": p.id,
+                "title": p.title,
+                "description": p.description,
+                "instructions": p.instructions,
+                "updated_at": p.updated_at.isoformat() if p.updated_at else p.created_at.isoformat()
+            }
+            for p in projects
+        ]
+
+@app.post("/projects")
+async def create_project(req: ProjectCreateRequest):
+    project_id = f"p-{uuid.uuid4().hex[:8]}"
+    with SessionLocal() as db:
+        new_proj = Project(
+            id=project_id,
+            title=req.title,
+            description=req.description,
+            instructions=""
+        )
+        db.add(new_proj)
+        db.commit()
+        return {"id": project_id, "title": new_proj.title, "description": new_proj.description}
+
+@app.get("/projects/{project_id}")
+async def get_project(project_id: str):
+    with SessionLocal() as db:
+        p = db.query(Project).filter(Project.id == project_id).first()
+        if not p:
+            return {"error": "Project not found"}
+        return {
+            "id": p.id,
+            "title": p.title,
+            "description": p.description,
+            "instructions": p.instructions,
+            "updated_at": p.updated_at.isoformat() if p.updated_at else p.created_at.isoformat()
+        }
+
+@app.put("/projects/{project_id}")
+async def update_project(project_id: str, req: ProjectUpdateRequest):
+    with SessionLocal() as db:
+        p = db.query(Project).filter(Project.id == project_id).first()
+        if not p:
+            return {"error": "Project not found"}
+        
+        if req.title is not None:
+            p.title = req.title
+        if req.description is not None:
+            p.description = req.description
+        if req.instructions is not None:
+            p.instructions = req.instructions
+            
+        db.commit()
+        return {"status": "success"}
 
 class CorrectionRequest(BaseModel):
     correction: str
@@ -451,7 +536,7 @@ async def chat_stream(request: Request, body: ChatRequest):
             session = db.query(ChatSession).filter(ChatSession.id == body.thread_id).first()
             if not session:
                 title = body.message[:30] + ("..." if len(body.message) > 30 else "")
-                session = ChatSession(id=body.thread_id, title=title)
+                session = ChatSession(id=body.thread_id, title=title, project_id=body.project_id)
                 db.add(session)
             else:
                 session.updated_at = datetime.utcnow()
@@ -593,6 +678,74 @@ async def get_memory_stats():
             "avg_confidence": round(avg_conf, 3) if avg_conf else None
         }
 
+@app.get("/memory/graph")
+async def get_memory_graph():
+    """Returns semantic facts formatted for a force-directed graph visualization."""
+    from database import SemanticFact
+    with SessionLocal() as db:
+        facts = db.query(SemanticFact).all()
+        
+        nodes = []
+        links = []
+        categories = set()
+        
+        for fact in facts:
+            nodes.append({
+                "id": fact.id,
+                "label": fact.fact,
+                "category": fact.category,
+                "val": fact.strength or 1.0,
+                "group": "fact"
+            })
+            if fact.category:
+                categories.add(fact.category)
+                links.append({
+                    "source": fact.id,
+                    "target": f"cat_{fact.category}",
+                    "value": fact.confidence or 1.0
+                })
+                
+        for cat in categories:
+            nodes.append({
+                "id": f"cat_{cat}",
+                "label": cat,
+                "category": "category",
+                "val": 2.0,
+                "group": "category"
+            })
+            
+        return {"nodes": nodes, "links": links}
+
+@app.get("/memory/facts")
+async def list_semantic_facts(skip: int = 0, limit: int = 100):
+    """List semantic facts for the dashboard."""
+    from database import SemanticFact
+    with SessionLocal() as db:
+        facts = db.query(SemanticFact).order_by(SemanticFact.timestamp.desc()).offset(skip).limit(limit).all()
+        return [
+            {
+                "id": f.id,
+                "fact": f.fact,
+                "category": f.category,
+                "entity": f.entity,
+                "confidence": f.confidence,
+                "strength": f.strength,
+                "last_accessed": f.last_accessed.isoformat() if f.last_accessed else None,
+                "timestamp": f.timestamp.isoformat() if f.timestamp else None
+            }
+            for f in facts
+        ]
+
+@app.delete("/memory/facts/{fact_id}")
+async def delete_semantic_fact(fact_id: str):
+    """Delete a semantic memory explicitly."""
+    from database import SemanticFact, MemoryEmbedding
+    with SessionLocal() as db:
+        db.query(MemoryEmbedding).filter(MemoryEmbedding.memory_id == fact_id).delete()
+        db.query(SemanticFact).filter(SemanticFact.id == fact_id).delete()
+        db.commit()
+    return {"status": "success"}
+
 # ---- Chat Export ----
 @app.get("/chats/{session_id}/export")
 async def export_chat(session_id: str, format: str = "md"):
@@ -685,6 +838,90 @@ async def export_pdf(req: PdfExportRequest):
         media_type="application/pdf",
         headers={"Content-Disposition": 'attachment; filename="ember-conversation.pdf"'},
     )
+
+
+# ---- Ember Flower API ----
+from database import UserConnection, AmbientEvent, FlowerSettings
+
+@app.get("/flower/connections")
+async def get_flower_connections():
+    with SessionLocal() as db:
+        conns = db.query(UserConnection).all()
+        return [{"provider": c.provider, "status": c.status, "last_synced": c.last_synced.isoformat() if c.last_synced else None} for c in conns]
+
+class ConnectRequest(BaseModel):
+    provider: str
+
+@app.post("/flower/connect")
+async def connect_flower_service(req: ConnectRequest):
+    """Mock endpoint to simulate OAuth connection."""
+    with SessionLocal() as db:
+        existing = db.query(UserConnection).filter_by(provider=req.provider).first()
+        if existing:
+            existing.status = "connected"
+            existing.last_synced = datetime.utcnow()
+        else:
+            conn = UserConnection(
+                id=str(uuid.uuid4()),
+                provider=req.provider,
+                access_token="mock_token",
+                status="connected"
+            )
+            db.add(conn)
+        db.commit()
+    return {"status": "success", "provider": req.provider}
+
+@app.get("/flower/feed")
+async def get_flower_feed():
+    with SessionLocal() as db:
+        events = db.query(AmbientEvent).order_by(AmbientEvent.timestamp.desc()).limit(20).all()
+        return [
+            {
+                "id": e.id,
+                "provider": e.provider,
+                "summary": e.event_summary,
+                "timestamp": e.timestamp.isoformat() if e.timestamp else None
+            } for e in events
+        ]
+
+class SettingsRequest(BaseModel):
+    allow_notifications: bool
+    morning_window: bool
+    afternoon_window: bool
+    evening_window: bool
+    delivery_method: str
+
+@app.get("/flower/settings")
+async def get_flower_settings():
+    with SessionLocal() as db:
+        settings = db.query(FlowerSettings).first()
+        if not settings:
+            settings = FlowerSettings(id="default")
+            db.add(settings)
+            db.commit()
+        return {
+            "allow_notifications": settings.allow_notifications,
+            "morning_window": settings.morning_window,
+            "afternoon_window": settings.afternoon_window,
+            "evening_window": settings.evening_window,
+            "delivery_method": settings.delivery_method
+        }
+
+@app.post("/flower/settings")
+async def update_flower_settings(req: SettingsRequest):
+    with SessionLocal() as db:
+        settings = db.query(FlowerSettings).first()
+        if not settings:
+            settings = FlowerSettings(id="default")
+            db.add(settings)
+            
+        settings.allow_notifications = req.allow_notifications
+        settings.morning_window = req.morning_window
+        settings.afternoon_window = req.afternoon_window
+        settings.evening_window = req.evening_window
+        settings.delivery_method = req.delivery_method
+        db.commit()
+    return {"status": "success"}
 
 
 if __name__ == "__main__":

@@ -3,8 +3,11 @@
 import { useRef, useState } from "react";
 import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
 import rehypeHighlight from "rehype-highlight";
+import rehypeKatex from "rehype-katex";
 import "highlight.js/styles/github-dark.css";
+import "katex/dist/katex.min.css";
 
 /** A code block with a hover "Copy" button (like Claude/ChatGPT). */
 function CodeBlock({ children }: { children?: React.ReactNode }) {
@@ -63,8 +66,8 @@ export function MessageContent({ content }: { content: string }) {
     <div className="ember-markdown">
       <ReactMarkdown
         urlTransform={imageSafeUrlTransform}
-        remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeHighlight]}
+        remarkPlugins={[remarkGfm, remarkMath]}
+        rehypePlugins={[rehypeHighlight, rehypeKatex]}
         components={{
           pre: ({ children }) => <CodeBlock>{children}</CodeBlock>,
           img: ({ alt, src }) =>

@@ -19,6 +19,7 @@ export function ModelPicker({
 }) {
   const [open, setOpen] = useState(false);
   const [dropUp, setDropUp] = useState(false);
+  const [showAll, setShowAll] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   const current = models.find((m) => m.key === value) ?? models[0];
@@ -37,7 +38,14 @@ export function ModelPicker({
 
   // Close on outside click / Escape.
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setTimeout(() => setShowAll(false), 200);
+      return;
+    }
+    
+    const idx = models.findIndex(m => m.key === value);
+    if (idx > 2) setShowAll(true);
+
     function onDown(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     }
@@ -95,7 +103,7 @@ export function ModelPicker({
             }`}
             data-lenis-prevent
           >
-            {models.map((m) => {
+            {models.slice(0, showAll ? models.length : 3).map((m) => {
               const active = m.key === value;
               return (
                 <button
@@ -133,6 +141,19 @@ export function ModelPicker({
                 </button>
               );
             })}
+            
+            {!showAll && models.length > 3 && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowAll(true);
+                }}
+                className="w-full mt-1 rounded-xl px-3 py-2 text-[12px] font-medium text-muted hover:text-foreground hover:bg-surface/70 transition-colors text-center"
+              >
+                Show all models &rarr;
+              </button>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

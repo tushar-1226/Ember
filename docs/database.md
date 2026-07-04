@@ -1,6 +1,6 @@
-# Horizon AI — Data & Database Architecture
+# Ember AI — Data & Database Architecture
 
-> **Context:** Horizon AI is a personal-reflection companion. Its entire value is that it
+> **Context:** Ember AI is a personal-reflection companion. Its entire value is that it
 > *remembers your life and reflects it back*. That means the database is not a supporting
 > component — **the database *is* the product**. The quality of memory retrieval, decay,
 > and consolidation is what makes the app feel magical instead of forgetful or creepy.
@@ -10,7 +10,7 @@
 
 ## 1. The memory model drives the schema
 
-Horizon AI models human memory as tiers. Each tier has different access patterns, and we
+Ember AI models human memory as tiers. Each tier has different access patterns, and we
 pick the store that fits each one — this is the core reason we run **more than one datastore**.
 
 | Memory tier | What it holds | Store | Why |
@@ -19,7 +19,7 @@ pick the store that fits each one — this is the core reason we run **more than
 | **Working / session** | Active conversation state for the agent graph | **Postgres** (LangGraph checkpointer) | Durable, resumable across devices. |
 | **Episodic** | Consolidated summaries of past sessions ("what happened, how you felt") | **Postgres** + vector | Long-lived, searchable by similarity and time. |
 | **Semantic** | Extracted facts, preferences, people, goals (with confidence) | **Postgres** + vector | Structured, queryable, decays over time. |
-| **Procedural** | Learned routines the user wants Horizon to follow | **Postgres** | Structured, rarely changes, toggleable. |
+| **Procedural** | Learned routines the user wants Ember to follow | **Postgres** | Structured, rarely changes, toggleable. |
 
 **The key insight:** the tiers aren't just storage — they're a *pipeline*. Sensory buffers
 (Redis) get **consolidated** into episodic summaries (Postgres) by a background job, and
@@ -154,7 +154,7 @@ storage.
 2. Prune facts below a floor (e.g. `confidence < 0.15`) unless pinned by the user.
 3. Boost salience of episodic snapshots that keep getting referenced.
 
-This is why Horizon feels alive: it **strengthens what matters and lets go of noise**,
+This is why Ember feels alive: it **strengthens what matters and lets go of noise**,
 exactly like human memory — and because it's all in Postgres, each step is an auditable,
 tunable SQL job.
 
@@ -162,7 +162,7 @@ tunable SQL job.
 
 ## 6. Making memory *visible* (schema supports the UX)
 
-The product promise is "magical, not creepy." That requires showing users what Horizon
+The product promise is "magical, not creepy." That requires showing users what Ember
 knows and *why it surfaced it*. The schema enables that directly:
 
 - `source_session_id` → "I remember this because you said it on May 3rd."

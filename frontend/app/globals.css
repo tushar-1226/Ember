@@ -311,3 +311,4 @@ html.lenis {
     animation: none !important;
   }
 }
+.hide-cursor, .hide-cursor * { cursor: none !important; }

@@ -62,6 +62,14 @@ export type ChatMessage = {
   timestamp: string;
 };
 
+export type ProjectSummary = {
+  id: string;
+  title: string;
+  description: string;
+  instructions: string;
+  updated_at: string;
+};
+
 // ---------------------------------------------------------------------------
 // Memory  (task: recall what Ember knows)
 // ---------------------------------------------------------------------------
@@ -118,7 +126,8 @@ export const reactToResurfacing = (id: string, reaction: ResurfacingReaction) =>
 // ---------------------------------------------------------------------------
 // Chats  (task: manage conversation threads)
 // ---------------------------------------------------------------------------
-export const getChats = () => getJSON<ChatSummary[]>("/chats");
+export const getChats = (projectId?: string) => 
+  getJSON<ChatSummary[]>(projectId ? `/chats?project_id=${encodeURIComponent(projectId)}` : "/chats");
 export const getChatHistory = (id: string) =>
   getJSON<ChatMessage[]>(`/chats/${id}`);
 
@@ -140,6 +149,14 @@ export async function exportChatPdf(
   if (!res.ok) throw new Error(`pdf export failed: ${res.status}`);
   return res.blob();
 }
+
+// ---------------------------------------------------------------------------
+// Projects
+// ---------------------------------------------------------------------------
+export const getProjects = () => getJSON<ProjectSummary[]>("/projects");
+export const getProject = (id: string) => getJSON<ProjectSummary>(`/projects/${id}`);
+export const createProject = (title: string, description: string = "") =>
+  postJSON<{ id: string; title: string; description: string }>("/projects", { title, description });
 
 // ---------------------------------------------------------------------------
 // File uploads  (task: attach a PDF / Excel / CSV / image to a conversation)
@@ -226,6 +243,7 @@ export async function streamChat(
     thread_id: string;
     model_key?: ModelKey;
     temporary?: boolean;
+    project_id?: string;
   },
   onEvent: (e: ChatStreamEvent) => void,
   signal?: AbortSignal

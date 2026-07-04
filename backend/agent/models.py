@@ -10,13 +10,13 @@ settings that unlock it, so selecting a model genuinely changes behavior.
 import os
 from typing import Any, Dict, List
 
-DEFAULT_MODEL_KEY = "glm"  # fastest + reliable — also the fallback target
+DEFAULT_MODEL_KEY = "nemotron"  # fastest + reliable — also the fallback target
 _NIM_BASE_URL = "https://integrate.api.nvidia.com/v1"
 
 # Ordered — this is also the dropdown order. Each model is tuned for its strength.
 _REGISTRY: Dict[str, Dict[str, Any]] = {
     "nemotron": {
-        "label": "Nemotron 3 Ultra",
+        "label": "Ember Reasoning",
         "ability": "Deep reasoning",
         "description": "550B thinking model. Best for hard, multi-step problems and careful analysis.",
         "kind": "chat",
@@ -25,25 +25,11 @@ _REGISTRY: Dict[str, Dict[str, Any]] = {
         "default_model": "nvidia/nemotron-3-ultra-550b-a55b",
         "temperature": 0.6,
         "top_p": 0.95,
-        # Its superpower: explicit chain-of-thought with a large reasoning budget.
         "extra_body": {"chat_template_kwargs": {"enable_thinking": True}, "reasoning_budget": 16384},
         "persona_hint": "Think step by step and reason carefully before answering.",
     },
-    "mistral": {
-        "label": "Mistral Medium 3.5",
-        "ability": "Fast & balanced",
-        "description": "Quick, well-rounded replies. The best everyday default for conversation.",
-        "kind": "chat",
-        "env_key": "MISTRAL_API_KEY",
-        "env_model": "MISTRAL_MODEL",
-        "default_model": "mistralai/mistral-medium-3.5-128b",
-        "temperature": 0.7,
-        "top_p": 0.95,
-        "extra_body": {},
-        "persona_hint": "Be warm, natural, and concise.",
-    },
     "deepseek": {
-        "label": "DeepSeek V4 Pro",
+        "label": "Ember Code",
         "ability": "Code & logic",
         "description": "Precise coding, math, and rigorous logic. Lowest temperature for exactness.",
         "kind": "chat",
@@ -55,8 +41,21 @@ _REGISTRY: Dict[str, Dict[str, Any]] = {
         "extra_body": {},
         "persona_hint": "Prioritize correct, well-structured code and rigorous, verifiable logic.",
     },
+    "mistral": {
+        "label": "Ember Chat",
+        "ability": "Fast & balanced",
+        "description": "Quick, well-rounded replies. The best everyday default for conversation.",
+        "kind": "chat",
+        "env_key": "MISTRAL_API_KEY",
+        "env_model": "MISTRAL_MODEL",
+        "default_model": "mistralai/mistral-large-3-675b-instruct-2512",
+        "temperature": 0.7,
+        "top_p": 0.95,
+        "extra_body": {},
+        "persona_hint": "Be warm, natural, and concise.",
+    },
     "gemma": {
-        "label": "Gemma 4",
+        "label": "Ember Lite",
         "ability": "Light & efficient",
         "description": "Snappy, low-latency answers for quick questions and everyday chat.",
         "kind": "chat",
@@ -68,8 +67,21 @@ _REGISTRY: Dict[str, Dict[str, Any]] = {
         "extra_body": {},
         "persona_hint": "Answer briefly and directly.",
     },
+    "nvidia": {
+        "label": "Ember Vision",
+        "ability": "Image generation",
+        "description": "Turns your prompt into an image instead of a text reply.",
+        "kind": "image",
+        "env_key": "NVIDIA_API_KEY",
+        "env_model": "NVIDIA_MODEL",
+        "default_model": "black-forest-labs/flux.1-dev",
+        "temperature": 0.0,
+        "top_p": 1.0,
+        "extra_body": {},
+        "persona_hint": "",
+    },
     "qwen": {
-        "label": "Qwen 3.5",
+        "label": "Ember Global",
         "ability": "Multilingual & long-context",
         "description": "Strong across languages with a large context window for long documents.",
         "kind": "chat",
@@ -82,7 +94,7 @@ _REGISTRY: Dict[str, Dict[str, Any]] = {
         "persona_hint": "Reply fluently in the user's language and handle long context well.",
     },
     "glm": {
-        "label": "GLM 5.2",
+        "label": "Ember Agent",
         "ability": "Agentic & versatile",
         "description": "Strong all-rounder with excellent tool use and instruction following.",
         "kind": "chat",
@@ -95,7 +107,7 @@ _REGISTRY: Dict[str, Dict[str, Any]] = {
         "persona_hint": "Follow instructions precisely and use tools when they help.",
     },
     "kimi": {
-        "label": "Kimi K2.6",
+        "label": "Ember Context",
         "ability": "Long-context agent",
         "description": "Huge context window — great for long documents and multi-step agent tasks.",
         "kind": "chat",
@@ -106,19 +118,6 @@ _REGISTRY: Dict[str, Dict[str, Any]] = {
         "top_p": 0.95,
         "extra_body": {},
         "persona_hint": "Make full use of the long context; keep track of details across the whole conversation.",
-    },
-    "nvidia": {
-        "label": "FLUX.1 dev",
-        "ability": "Image generation",
-        "description": "Turns your prompt into an image instead of a text reply (FLUX.1-dev).",
-        "kind": "image",
-        "env_key": "NVIDIA_API_KEY",
-        "env_model": "NVIDIA_MODEL",
-        "default_model": "black-forest-labs/flux.1-dev",
-        "temperature": 0.0,
-        "top_p": 1.0,
-        "extra_body": {},
-        "persona_hint": "",
     },
 }
 

@@ -1,7 +1,7 @@
 """
 Proactive Resurfacing — the "magic moment" engine.
 
-Horizon's whole pitch (see docs/product-plan.md §4) hinges on one experience:
+Ember's whole pitch (see docs/product-plan.md §4) hinges on one experience:
 it resurfaces something you forgot you told it, *at the right time*, with visible
 provenance — and never feels noisy or creepy. This module is that engine.
 

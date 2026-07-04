@@ -24,6 +24,9 @@ class SemanticFact(Base):
     fact = Column(String)
     category = Column(String)
     entity = Column(String)
+    strength = Column(Float, default=1.0)
+    last_accessed = Column(DateTime, default=datetime.utcnow)
+    decay_rate = Column(Float, default=0.05)
 
 class ProceduralWorkflow(Base):
     __tablename__ = "procedural_workflows"
@@ -57,7 +60,17 @@ class UserProfile(Base):
 class ChatSession(Base):
     __tablename__ = "chat_sessions"
     id = Column(String, primary_key=True, index=True)
+    project_id = Column(String, index=True, nullable=True)
     title = Column(String, default="New Chat")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class Project(Base):
+    __tablename__ = "projects"
+    id = Column(String, primary_key=True, index=True)
+    title = Column(String)
+    description = Column(String, nullable=True)
+    instructions = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -118,6 +131,31 @@ class Resurfacing(Base):
     status = Column(String, default="pending", index=True)  # pending | acted | dismissed | forgotten
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
     reacted_at = Column(DateTime, nullable=True)
+
+class UserConnection(Base):
+    __tablename__ = "user_connections"
+    id = Column(String, primary_key=True, index=True)
+    provider = Column(String, index=True)
+    access_token = Column(String)
+    refresh_token = Column(String)
+    status = Column(String, default="connected")
+    last_synced = Column(DateTime, default=datetime.utcnow)
+
+class AmbientEvent(Base):
+    __tablename__ = "ambient_events"
+    id = Column(String, primary_key=True, index=True)
+    provider = Column(String, index=True)
+    event_summary = Column(String)
+    timestamp = Column(DateTime, default=datetime.utcnow, index=True)
+
+class FlowerSettings(Base):
+    __tablename__ = "flower_settings"
+    id = Column(String, primary_key=True, index=True)
+    allow_notifications = Column(Boolean, default=True)
+    morning_window = Column(Boolean, default=True)
+    afternoon_window = Column(Boolean, default=False)
+    evening_window = Column(Boolean, default=True)
+    delivery_method = Column(String, default="desktop")
 
 # Initialize Redis client
 redis_client = redis.Redis.from_url(REDIS_URL, decode_responses=True)

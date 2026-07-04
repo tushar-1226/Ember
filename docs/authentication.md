@@ -1,6 +1,6 @@
-# Horizon AI — Authentication & Identity Architecture
+# Ember AI — Authentication & Identity Architecture
 
-> **Context:** Horizon AI stores the most sensitive data a person can give an app — their
+> **Context:** Ember AI stores the most sensitive data a person can give an app — their
 > private reflections, moods, relationships, fears, and goals over months. Authentication
 > here is not a checkbox. It is a **core feature and a core selling point**: *"your memory
 > is yours — private, encrypted, and impossible for us to read casually."* This document

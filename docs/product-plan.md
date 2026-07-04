@@ -1,8 +1,8 @@
-# Horizon AI — Product Plan
+# Ember AI — Product Plan
 
-> **The pitch:** *Horizon is a personal-reflection companion that remembers your life and
+> **The pitch:** *Ember is a personal-reflection companion that remembers your life and
 > reflects it back to help you grow.* Unlike a chatbot that forgets you the moment you close
-> the tab, Horizon builds a living memory of who you are — and the reason it feels magical
+> the tab, Ember builds a living memory of who you are — and the reason it feels magical
 > instead of creepy is that you can **see it remember, see it strengthen what matters, and
 > see it gently let go of what doesn't.**
 
@@ -38,7 +38,7 @@ instead of repeating the same loops.
 
 ## 4. The magic moment (the whole product hinges on this)
 
-Retention lives or dies on **one experience**: Horizon resurfaces something you forgot you
+Retention lives or dies on **one experience**: Ember resurfaces something you forgot you
 told it, at exactly the right time, with visible provenance.
 
 > *"Three weeks ago, before your last big week, you told me Sunday nights make you spiral.
@@ -47,7 +47,7 @@ told it, at exactly the right time, with visible provenance.
 
 A naive "remember everything and dump it into the prompt" system produces this moment as
 **noisy or creepy** — it recalls the wrong thing, or too much, or something you wish it had
-forgotten. Horizon's **consolidation + decay pipeline** is exactly what makes the moment
+forgotten. Ember's **consolidation + decay pipeline** is exactly what makes the moment
 land: it surfaces the *right* memory, at the *right* strength, and can always explain *why*.
 
 **Your job in month one is to make this single moment undeniable. Everything else is support.**
@@ -56,11 +56,11 @@ land: it surfaces the *right* memory, at the *right* strength, and can always ex
 
 ## 5. Why "consolidation/decay made visible" is the moat
 
-Competitors treat memory as invisible storage. Horizon makes the *lifecycle* of memory a
+Competitors treat memory as invisible storage. Ember makes the *lifecycle* of memory a
 first-class, visible part of the experience — which flips the two biggest consumer fears
 (creepy + wrong) into trust and delight.
 
-| Fear | Horizon's visible answer |
+| Fear | Ember's visible answer |
 |---|---|
 | "It's creepy that it knows this." | Every memory shows **provenance**: *"from our chat on May 3rd."* You knowingly told it. |
 | "It remembered something embarrassing/outdated." | Memories **decay** and visibly **fade**; you can watch old, unreinforced things weaken and prune them in one tap. |
@@ -73,7 +73,7 @@ The tagline this earns: **"A memory that grows with you — and knows when to le
 1. **Memory Garden / "What I know about you"** — living cards of facts, goals, people,
    themes. Strong memories glow; fading ones dim. Tap to edit, pin (protect from decay), or
    forget. *This makes the moat tangible and the switching cost felt.*
-2. **Provenance chips** — every time Horizon uses a memory in chat, a small "why I know this"
+2. **Provenance chips** — every time Ember uses a memory in chat, a small "why I know this"
    chip links back to the source moment.
 3. **The Weekly Reflection** — an auto-generated digest from consolidated episodic memory:
    *"This week you felt most alive when… you kept circling back to… a pattern I'm noticing…"*
@@ -104,14 +104,14 @@ The tagline this earns: **"A memory that grows with you — and knows when to le
 
 ### Deliberately cut for now
 Multi-model routing, image generation, URL scraping, document RAG. They're generic
-table-stakes that dilute a focused companion. Horizon doesn't need five models — it needs to
+table-stakes that dilute a focused companion. Ember doesn't need five models — it needs to
 **remember well**. Ruthless focus beats feature breadth for a consumer wedge.
 
 ---
 
 ## 7. Differentiation vs. the market
 
-| | ChatGPT/Claude memory | Journaling apps (Rosebud, Day One) | Companion apps (Replika) | **Horizon** |
+| | ChatGPT/Claude memory | Journaling apps (Rosebud, Day One) | Companion apps (Replika) | **Ember** |
 |---|---|---|---|---|
 | Remembers across sessions | Shallow, generic | Stores, doesn't understand | Yes, but shallow | **Deep, structured, longitudinal** |
 | Proactive resurfacing | ❌ | ❌ | Limited | **✅ core feature** |
@@ -120,7 +120,7 @@ table-stakes that dilute a focused companion. Horizon doesn't need five models �
 | Memory is user-owned/portable | ❌ locked in | Partial | ❌ | **✅ export/delete, encrypted** |
 | Growth-oriented reflection | ❌ | Manual | Emotional, not growth | **✅ patterns → insight** |
 
-**Positioning:** Horizon is not a smarter chatbot and not a prettier journal. It's the first
+**Positioning:** Ember is not a smarter chatbot and not a prettier journal. It's the first
 companion whose **memory is the feature** — and the only one that shows you memory *working*.
 
 ---
@@ -128,7 +128,7 @@ companion whose **memory is the feature** — and the only one that shows you me
 ## 8. Retention & growth loop
 
 ```
-   Talk to Horizon  ──▶  It consolidates & remembers
+   Talk to Ember  ──▶  It consolidates & remembers
         ▲                          │
         │                          ▼
   Weekly reflection  ◀──  Proactive "I remembered…" moment
@@ -143,7 +143,7 @@ Every day of use makes the memory richer, the reflections sharper, and leaving m
 ## 9. Monetization
 
 - **Freemium.** Free: limited memory horizon (e.g. last 2 weeks of deep memory), basic chat.
-- **Horizon Plus (~$12–15/mo):** unlimited long-term memory, weekly reflections, voice,
+- **Ember Plus (~$12–15/mo):** unlimited long-term memory, weekly reflections, voice,
   trends, priority model. Anchored against therapy/coaching prices, not against free chatbots.
 - **Private Vault add-on:** zero-knowledge encryption tier for privacy-maximalists
   (see [`authentication.md`](./authentication.md) §6).
@@ -178,7 +178,7 @@ Every day of use makes the memory richer, the reflections sharper, and leaving m
 - **Trust/privacy is existential.** → Encryption + provenance + one-tap forget aren't
   features, they're the price of entry. Lead with them.
 - **Creepy-valley risk.** → Provenance on every memory + user control over decay is the
-  designed antidote. Never surface a memory Horizon can't explain.
+  designed antidote. Never surface a memory Ember can't explain.
 - **LLM cost at scale.** → Consolidation *reduces* context size (that's the point); cheap
   models for extraction/summarization, premium model only for the conversation.
 
@@ -186,7 +186,7 @@ Every day of use makes the memory richer, the reflections sharper, and leaving m
 
 ## 13. Name suggestions
 
-You've been calling it **Horizon AI**, and it's genuinely strong — "horizon" evokes looking
+You've been calling it **Ember AI**, and it's genuinely strong — "horizon" evokes looking
 forward, growth, and the long view, which fits a *long-horizon* memory companion perfectly.
 I'd keep it as the front-runner. Alternatives, grouped by the feeling they evoke:
 
