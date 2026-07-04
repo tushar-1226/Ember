@@ -129,9 +129,6 @@ export function ModelPicker({
                         {m.ability}
                       </span>
                     </span>
-                    <span className="mt-0.5 block text-[11px] leading-snug text-muted">
-                      {m.description}
-                    </span>
                   </span>
                   {active && (
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="mt-1 shrink-0 text-ember-amber" aria-hidden>

@@ -119,6 +119,19 @@ _REGISTRY: Dict[str, Dict[str, Any]] = {
         "extra_body": {},
         "persona_hint": "Make full use of the long context; keep track of details across the whole conversation.",
     },
+    "indian": {
+        "label": "Ember Indian",
+        "ability": "Hinglish & Indic languages",
+        "description": "Natively optimized for Hinglish and Indian languages.",
+        "kind": "chat",
+        "env_key": "INDIAN_API_KEY",
+        "env_model": "INDIAN_MODEL",
+        "default_model": "sarvamai/sarvam-m",
+        "temperature": 0.5,
+        "top_p": 1.0,
+        "extra_body": {},
+        "persona_hint": "Reply natively in Hinglish or the requested Indic language.",
+    },
 }
 
 

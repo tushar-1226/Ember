@@ -6,67 +6,9 @@ import { Sidebar } from "@/components/sidebar";
 import { ProjectSidebar } from "@/components/project-sidebar";
 import { ModelPicker } from "@/components/model-picker";
 import { motion, AnimatePresence } from "framer-motion";
-import { getChats, getProject, getChatHistory, streamChat, getModels, type ChatSummary, type ProjectSummary, type ModelInfo, type ModelKey } from "@/lib/api";
+import { getChats, getProject, getChatHistory, streamChat, getModels, deleteChat, type ChatSummary, type ProjectSummary, type ModelInfo, type ModelKey } from "@/lib/api";
+import { MessageContent } from "@/components/message-content";
 
-const TypewriterText = () => {
-  const parts = [
-    { text: "It ", className: "" },
-    { text: "remembers", className: "text-[#D4A068]" },
-    { text: "\nyour life, and\n", className: "" },
-    { text: "reflects", className: "text-[#D4A068]" },
-    { text: " it back.", className: "" }
-  ];
-
-  const fullText = parts.map(p => p.text).join("");
-  const [length, setLength] = useState(0);
-
-  useEffect(() => {
-    let i = 0;
-    const timer = setInterval(() => {
-      setLength((prev) => {
-        if (prev >= fullText.length) {
-          clearInterval(timer);
-          return prev;
-        }
-        return prev + 1;
-      });
-    }, 60);
-    return () => clearInterval(timer);
-  }, [fullText.length]);
-
-  let currentLength = 0;
-
-  return (
-    <>
-      {parts.map((part, index) => {
-        const partStart = currentLength;
-        const partEnd = currentLength + part.text.length;
-        currentLength = partEnd;
-        
-        if (length <= partStart) return null;
-        
-        const visibleText = part.text.substring(0, length - partStart);
-        const lines = visibleText.split('\n');
-        
-        return (
-          <span key={index} className={part.className}>
-            {lines.map((line, i) => (
-              <span key={i}>
-                {line}
-                {i < lines.length - 1 && <br />}
-              </span>
-            ))}
-          </span>
-        );
-      })}
-      <motion.span
-        animate={{ opacity: [1, 0] }}
-        transition={{ repeat: Infinity, duration: 0.8, ease: "linear" }}
-        className="inline-block w-[3px] h-[40px] bg-foreground ml-2 rounded-sm align-middle"
-      />
-    </>
-  );
-};
 
 export default function ProjectDetailView({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
@@ -81,6 +23,7 @@ export default function ProjectDetailView({ params }: { params: Promise<{ id: st
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [model, setModel] = useState<ModelKey>("nemotron");
   const [isRecording, setIsRecording] = useState(false);
+  const [chatToDelete, setChatToDelete] = useState<string | null>(null);
 
   const toggleRecording = () => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -157,7 +100,7 @@ export default function ProjectDetailView({ params }: { params: Promise<{ id: st
     }
   };
 
-  const Composer = ({ className = "" }: { className?: string }) => (
+  const renderComposer = (className = "") => (
     <div className={`relative rounded-3xl border border-border-soft bg-surface/50 p-2 shadow-lg backdrop-blur-xl transition-colors focus-within:border-white/20 ${className}`}>
       <textarea
         value={value}
@@ -252,21 +195,21 @@ export default function ProjectDetailView({ params }: { params: Promise<{ id: st
             // Landing Page View
             <div className="flex-1 overflow-y-auto px-6 py-12 flex flex-col items-center">
               <div className="w-full max-w-3xl flex flex-col justify-center min-h-[50vh]">
-                <h2 className="text-5xl text-foreground font-display font-medium tracking-tight mb-12 text-left min-h-[160px] leading-tight">
-                  <TypewriterText />
+                <h2 className="text-5xl text-foreground font-display font-medium tracking-tight mb-12 text-left leading-tight">
+                  {project?.title || "Loading..."}
                 </h2>
                 
-                <Composer className="mb-12 shadow-2xl" />
+                {renderComposer("mb-12 shadow-2xl")}
 
                 {chats.length > 0 && (
                   <div className="w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
                     <h3 className="text-[11px] font-medium text-faint uppercase tracking-wider mb-4 px-2">Recent chats in this project</h3>
                     <div className="space-y-1">
                       {chats.map(c => (
-                        <button 
+                        <div 
                           key={c.id} 
                           onClick={() => setActiveThreadId(c.id)} 
-                          className="w-full text-left p-4 rounded-2xl hover:bg-surface/50 transition-colors border border-transparent hover:border-border-soft flex items-center justify-between group"
+                          className="w-full text-left p-4 rounded-2xl hover:bg-surface/50 transition-colors border border-transparent hover:border-border-soft flex items-center justify-between group cursor-pointer"
                         >
                           <div className="flex items-center gap-3">
                             <div className="h-8 w-8 rounded-full bg-surface flex items-center justify-center text-muted group-hover:text-foreground transition-colors border border-border-soft">
@@ -276,10 +219,26 @@ export default function ProjectDetailView({ params }: { params: Promise<{ id: st
                             </div>
                             <span className="text-foreground text-[14px] font-medium">{c.title}</span>
                           </div>
-                          <span className="text-faint text-[12px] group-hover:text-muted transition-colors">
-                            {new Date(c.updated_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                          </span>
-                        </button>
+                          <div className="flex items-center gap-4">
+                            <span className="text-faint text-[12px] group-hover:text-muted transition-colors">
+                              {new Date(c.updated_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                            </span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setChatToDelete(c.id);
+                              }}
+                              className="text-muted hover:text-red-400 p-1.5 rounded-md hover:bg-red-400/10 transition-colors opacity-0 group-hover:opacity-100"
+                              aria-label="Delete chat"
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M3 6h18"></path>
+                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -288,18 +247,24 @@ export default function ProjectDetailView({ params }: { params: Promise<{ id: st
             </div>
           ) : (
             // Active Chat View
-            <div className="flex-1 overflow-y-auto px-6 py-6" data-lenis-prevent>
-              <div className="mx-auto max-w-3xl flex h-full flex-col justify-end">
-                <div className="space-y-6 mb-6">
-                  {messages.map((m, i) => (
-                    <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-[85%] rounded-2xl px-5 py-3 ${m.role === 'user' ? 'bg-foreground text-void' : 'bg-surface/80 border border-border-soft text-foreground'}`}>
-                        {m.content}
+            <div className="flex-1 flex flex-col min-h-0" data-lenis-prevent>
+              <div className="flex-1 overflow-y-auto px-6 pt-6 pb-4 flex flex-col">
+                <div className="mx-auto w-full max-w-3xl flex min-h-full flex-col">
+                  <div className="space-y-6 mt-auto">
+                    {messages.map((m, i) => (
+                      <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[85%] rounded-2xl px-5 py-3 ${m.role === 'user' ? 'bg-foreground text-void' : 'bg-surface/80 border border-border-soft text-foreground overflow-x-auto'}`}>
+                          {m.role === 'user' ? m.content : <MessageContent content={m.content} />}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-                <Composer className="mt-auto" />
+              </div>
+              <div className="shrink-0 px-6 pb-6 pt-2">
+                <div className="mx-auto w-full max-w-3xl">
+                  {renderComposer()}
+                </div>
               </div>
             </div>
           )}
@@ -310,6 +275,65 @@ export default function ProjectDetailView({ params }: { params: Promise<{ id: st
           {project && <ProjectSidebar project={project} />}
         </div>
       </div>
+
+      <AnimatePresence>
+        {chatToDelete && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
+            onClick={() => setChatToDelete(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="w-full max-w-sm rounded-2xl border border-ember-amber/20 bg-surface shadow-2xl overflow-hidden"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="h-10 w-10 rounded-full bg-ember-amber/10 flex items-center justify-center text-ember-amber">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 6h18"></path>
+                      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-medium text-foreground">Delete Chat</h3>
+                </div>
+                <p className="text-muted text-[13px] leading-relaxed mb-6">
+                  Are you sure you want to permanently delete this chat? This action cannot be undone.
+                </p>
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={() => setChatToDelete(null)}
+                    className="px-4 py-2 rounded-xl text-sm font-medium text-foreground bg-surface hover:bg-surface/80 border border-border-soft transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={async () => {
+                      try {
+                        await deleteChat(chatToDelete);
+                        setChats(chats.filter(chat => chat.id !== chatToDelete));
+                        setChatToDelete(null);
+                      } catch (err) {
+                        console.error(err);
+                        alert("Failed to delete chat.");
+                      }
+                    }}
+                    className="px-4 py-2 rounded-xl text-sm font-medium text-void bg-ember-amber hover:bg-ember-gold transition-colors"
+                  >
+                    Delete Chat
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

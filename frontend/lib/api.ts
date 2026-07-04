@@ -158,6 +158,11 @@ export const getProject = (id: string) => getJSON<ProjectSummary>(`/projects/${i
 export const createProject = (title: string, description: string = "") =>
   postJSON<{ id: string; title: string; description: string }>("/projects", { title, description });
 
+export async function deleteProject(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/projects/${id}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`delete project failed: ${res.status}`);
+}
+
 // ---------------------------------------------------------------------------
 // File uploads  (task: attach a PDF / Excel / CSV / image to a conversation)
 // ---------------------------------------------------------------------------
@@ -212,7 +217,8 @@ export type ModelKey =
   | "qwen"
   | "glm"
   | "kimi"
-  | "nvidia";
+  | "nvidia"
+  | "indian";
 
 export type ModelInfo = {
   key: ModelKey;

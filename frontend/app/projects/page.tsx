@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/sidebar";
-import { getChats, getProjects, createProject, type ChatSummary, type ProjectSummary } from "@/lib/api";
+import { getChats, getProjects, createProject, deleteProject, type ChatSummary, type ProjectSummary } from "@/lib/api";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function ProjectsPage() {
@@ -15,6 +15,7 @@ export default function ProjectsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newDescription, setNewDescription] = useState("");
+  const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     getChats().then(setChats).catch(() => setChats([]));
@@ -133,11 +134,25 @@ export default function ProjectsPage() {
               ) : (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2">
                   {filteredProjects.map((p) => (
-                    <Link
+                    <div
                       key={p.id}
-                      href={`/projects/${p.id}`}
-                      className="group flex h-40 flex-col rounded-2xl border border-border-soft bg-surface/50 p-5 shadow-sm transition-colors hover:border-ember-amber/40 hover:bg-surface/80"
+                      onClick={() => router.push(`/projects/${p.id}`)}
+                      className="group flex h-40 flex-col rounded-2xl border border-border-soft bg-surface/50 p-5 shadow-sm transition-colors hover:border-ember-amber/40 hover:bg-surface/80 cursor-pointer relative"
                     >
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setProjectToDelete(p.id);
+                        }}
+                        className="absolute top-4 right-4 text-muted hover:text-red-400 p-1.5 rounded-md hover:bg-red-400/10 transition-colors opacity-0 group-hover:opacity-100"
+                        aria-label="Delete project"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M3 6h18"></path>
+                          <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                          <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                        </svg>
+                      </button>
                       <div className="min-h-0 flex-1">
                         <h3 className="font-semibold text-foreground transition-colors group-hover:text-ember-amber">
                           {p.title}
@@ -151,7 +166,7 @@ export default function ProjectsPage() {
                       <div className="mt-4 shrink-0 text-xs text-faint">
                         {new Date(p.updated_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                       </div>
-                    </Link>
+                    </div>
                   ))}
                 </div>
               )}
@@ -219,6 +234,64 @@ export default function ProjectsPage() {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Delete Project Modal */}
+        {projectToDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setProjectToDelete(null)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="relative w-full max-w-sm rounded-2xl border border-ember-amber/20 bg-surface shadow-2xl overflow-hidden backdrop-blur-xl"
+            >
+              <div className="p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="h-10 w-10 rounded-full bg-ember-amber/10 flex items-center justify-center text-ember-amber">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 6h18"></path>
+                      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-medium text-foreground">Delete Project</h3>
+                </div>
+                <p className="text-muted text-[13px] leading-relaxed mb-6">
+                  Are you sure you want to permanently delete this project? This will also delete all chats within it. This action cannot be undone.
+                </p>
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={() => setProjectToDelete(null)}
+                    className="px-4 py-2 rounded-xl text-sm font-medium text-foreground bg-surface hover:bg-surface/80 border border-border-soft transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={async () => {
+                      try {
+                        await deleteProject(projectToDelete);
+                        setProjects(projects.filter(p => p.id !== projectToDelete));
+                        setProjectToDelete(null);
+                      } catch (err) {
+                        console.error(err);
+                        alert("Failed to delete project.");
+                      }
+                    }}
+                    className="px-4 py-2 rounded-xl text-sm font-medium text-void bg-ember-amber hover:bg-ember-gold transition-colors"
+                  >
+                    Delete Project
+                  </button>
+                </div>
+              </div>
             </motion.div>
           </div>
         )}

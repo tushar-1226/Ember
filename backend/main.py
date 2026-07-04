@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sse_starlette.sse import EventSourceResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
+from typing import Optional
 
 # Load environment variables FIRST before importing other local modules
 load_dotenv()
@@ -243,6 +244,18 @@ async def update_project(project_id: str, req: ProjectUpdateRequest):
             
         db.commit()
         return {"status": "success"}
+
+@app.delete("/projects/{project_id}")
+async def delete_project(project_id: str):
+    with SessionLocal() as db:
+        chats = db.query(ChatSession).filter(ChatSession.project_id == project_id).all()
+        chat_ids = [c.id for c in chats]
+        if chat_ids:
+            db.query(ChatMessage).filter(ChatMessage.session_id.in_(chat_ids)).delete(synchronize_session=False)
+            db.query(ChatSession).filter(ChatSession.project_id == project_id).delete(synchronize_session=False)
+        db.query(Project).filter(Project.id == project_id).delete(synchronize_session=False)
+        db.commit()
+    return {"status": "success"}
 
 class CorrectionRequest(BaseModel):
     correction: str

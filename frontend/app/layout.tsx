@@ -4,7 +4,6 @@ import "./globals.css";
 import { SmoothScroll } from "@/components/smooth-scroll";
 import { Nav } from "@/components/nav";
 import { PreferencesApplier } from "@/components/preferences-applier";
-import { CustomCursor } from "@/components/custom-cursor";
 
 const display = Space_Grotesk({ subsets: ["latin"], variable: "--font-display", display: "swap" });
 const geistSans = Geist({ subsets: ["latin"], variable: "--font-geist-sans", display: "swap" });
@@ -26,7 +25,6 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     >
       <body className="min-h-full bg-background text-foreground">
         <PreferencesApplier />
-        <CustomCursor />
         <Nav />
         <SmoothScroll>{children}</SmoothScroll>
       </body>
