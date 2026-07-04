@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc *)",
+      "Bash(npx --yes create-next-app@latest frontend --ts --tailwind --eslint --app --no-src-dir --import-alias \"@/*\" --use-pnpm --turbopack)",
+      "Bash(pnpm add *)",
+      "Bash(npx next *)"
+    ]
+  }
+}

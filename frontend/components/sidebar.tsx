@@ -1,0 +1,235 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
+import type { ChatSummary } from "@/lib/api";
+
+/* --- Inline icons (no external icon lib) ------------------------------------ */
+type IconProps = { className?: string };
+const I = {
+  new: (p: IconProps) => (
+    <svg viewBox="0 0 24 24" fill="none" className={p.className} width="18" height="18">
+      <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  ),
+  chats: (p: IconProps) => (
+    <svg viewBox="0 0 24 24" fill="none" className={p.className} width="18" height="18">
+      <path d="M21 15a2 2 0 0 1-2 2H8l-4 4V5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+    </svg>
+  ),
+  projects: (p: IconProps) => (
+    <svg viewBox="0 0 24 24" fill="none" className={p.className} width="18" height="18">
+      <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+    </svg>
+  ),
+  customize: (p: IconProps) => (
+    <svg viewBox="0 0 24 24" fill="none" className={p.className} width="18" height="18">
+      <path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  ),
+  code: (p: IconProps) => (
+    <svg viewBox="0 0 24 24" fill="none" className={p.className} width="18" height="18">
+      <path d="M16 18l6-6-6-6M8 6l-6 6 6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
+  menu: (p: IconProps) => (
+    <svg viewBox="0 0 24 24" fill="none" className={p.className} width="20" height="20">
+      <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  ),
+  trash: (p: IconProps) => (
+    <svg viewBox="0 0 24 24" fill="none" className={p.className} width="14" height="14">
+      <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
+};
+
+export function Sidebar({
+  chats,
+  activeId,
+  onNewChat,
+  onSelectChat,
+  onDeleteChat,
+  onOpenCustomize,
+}: {
+  chats: ChatSummary[];
+  activeId: string;
+  onNewChat: () => void;
+  onSelectChat: (id: string) => void;
+  onDeleteChat?: (id: string) => void;
+  onOpenCustomize?: () => void;
+}) {
+  const NAV_ITEMS = [
+    { key: "chats", label: "Chats", Icon: I.chats, onClick: undefined },
+    { key: "projects", label: "Projects", Icon: I.projects, onClick: undefined },
+    { key: "customize", label: "Customize", Icon: I.customize, onClick: onOpenCustomize },
+  ] as const;
+
+  const [open, setOpen] = useState(false); // mobile drawer
+
+  const content = (
+    <div className="flex h-full w-64 flex-col border-r border-border-soft bg-surface/95 backdrop-blur-xl">
+      {/* Wordmark */}
+      <div className="flex items-center gap-2 px-4 pb-2 pt-5">
+        <span className="relative grid h-6 w-6 place-items-center">
+          <span className="absolute h-2 w-2 rounded-full bg-ember-amber shadow-ember animate-flicker" />
+          <span className="absolute h-6 w-6 rounded-full border border-ember-amber/25" />
+        </span>
+        <span className="font-display text-lg font-semibold tracking-tight text-foreground">Ember</span>
+      </div>
+
+      {/* New chat */}
+      <div className="px-3 pt-3">
+        <button
+          onClick={() => {
+            onNewChat();
+            setOpen(false);
+          }}
+          data-cursor="hot"
+          className="flex w-full items-center gap-2.5 rounded-xl border border-border-soft bg-raised/60 px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-ember-amber/40 hover:bg-raised"
+        >
+          <I.new className="text-ember-amber" />
+          New chat
+        </button>
+      </div>
+
+      {/* Primary nav */}
+      <nav className="mt-3 space-y-0.5 px-3">
+        {NAV_ITEMS.map(({ key, label, Icon, onClick }) => (
+          <button
+            key={key}
+            onClick={
+              onClick
+                ? () => {
+                    onClick();
+                    setOpen(false);
+                  }
+                : undefined
+            }
+            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-muted transition-colors hover:bg-raised/60 hover:text-foreground"
+            title={onClick ? label : `${label} (coming soon)`}
+          >
+            <Icon className="text-faint" />
+            {label}
+          </button>
+        ))}
+        <Link
+          href="/code"
+          onClick={() => setOpen(false)}
+          className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-muted transition-colors hover:bg-raised/60 hover:text-foreground"
+          title="Ember Code"
+        >
+          <I.code className="text-faint" />
+          Ember Code
+        </Link>
+      </nav>
+
+      {/* Recents */}
+      <div className="mt-5 min-h-0 flex-1 overflow-y-auto px-3 pb-3" data-lenis-prevent>
+        <p className="px-3 pb-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-faint">Recents</p>
+        {chats.length === 0 ? (
+          <p className="px-3 py-2 text-[13px] text-faint">No conversations yet.</p>
+        ) : (
+          <div className="space-y-0.5">
+            {chats.map((c) => {
+              const active = c.id === activeId;
+              return (
+                <div
+                  key={c.id}
+                  className={`group flex items-center gap-1 rounded-lg pr-1 transition-colors ${
+                    active ? "bg-ember-amber/10" : "hover:bg-raised/60"
+                  }`}
+                >
+                  <button
+                    onClick={() => {
+                      onSelectChat(c.id);
+                      setOpen(false);
+                    }}
+                    className={`min-w-0 flex-1 truncate px-3 py-2 text-left text-[13px] ${
+                      active ? "text-foreground" : "text-muted group-hover:text-foreground"
+                    }`}
+                    title={c.title}
+                  >
+                    {c.title || "Untitled"}
+                  </button>
+                  {onDeleteChat && (
+                    <button
+                      onClick={() => onDeleteChat(c.id)}
+                      className="shrink-0 rounded-md p-1.5 text-faint opacity-0 transition hover:text-ember-coral group-hover:opacity-100"
+                      title="Delete chat"
+                    >
+                      <I.trash />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* User footer — opens Settings */}
+      <div className="border-t border-border-soft px-3 py-3">
+        <Link
+          href="/settings"
+          onClick={() => setOpen(false)}
+          className="flex items-center gap-2.5 rounded-lg px-1.5 py-1.5 transition-colors hover:bg-raised/60"
+          title="Settings"
+        >
+          <span className="grid h-7 w-7 place-items-center rounded-full bg-raised text-xs font-semibold text-foreground">
+            T
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[13px] font-medium text-foreground">Tushar</p>
+            <p className="text-[11px] text-faint">Ember · private</p>
+          </div>
+          <svg viewBox="0 0 24 24" fill="none" width="16" height="16" className="shrink-0 text-faint">
+            <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.7" />
+            <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 6 19.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 15H2.9a2 2 0 1 1 0-4H3a1.7 1.7 0 0 0 1.6-2.9l-.1-.1A2 2 0 1 1 7.3 5.2l.1.1A1.7 1.7 0 0 0 9 5.6V5.5a2 2 0 1 1 4 0v.1A1.7 1.7 0 0 0 15 6.6l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.7 1.7 0 0 0 18.4 12v.1c0 .7.4 1.3 1 1.6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </Link>
+      </div>
+    </div>
+  );
+
+  return (
+    <>
+      {/* Mobile open button */}
+      <button
+        onClick={() => setOpen(true)}
+        className="fixed left-4 top-4 z-40 grid h-10 w-10 place-items-center rounded-xl border border-border-soft bg-surface/80 text-muted backdrop-blur md:hidden"
+        aria-label="Open menu"
+      >
+        <I.menu />
+      </button>
+
+      {/* Desktop: fixed sidebar */}
+      <aside className="fixed inset-y-0 left-0 z-30 hidden md:block">{content}</aside>
+
+      {/* Mobile: slide-over drawer */}
+      <AnimatePresence>
+        {open && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setOpen(false)}
+              className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden"
+            />
+            <motion.aside
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ type: "spring", stiffness: 400, damping: 40 }}
+              className="fixed inset-y-0 left-0 z-50 md:hidden"
+            >
+              {content}
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
