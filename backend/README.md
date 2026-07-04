@@ -2,7 +2,7 @@
 
 The backend of the Ember AI conversational agent, built with **FastAPI** and **LangGraph**. It features a supervisor agent architecture, persistent memory with time-decay mechanisms, and project-scoped sessions.
 
-## 🚀 Key Features
+## Key Features
 
 - **Supervisor Agent Architecture**: Utilizes LangGraph to structure the agent into a supervisor that orchestrates specialized AI models and tasks (`graph.py`, `flower.py`).
 - **Memory Management**: Features time-decay and resurfacing mechanisms to ensure the agent remembers relevant context without getting overwhelmed by stale data (`cleanup.py`, `resurfacing.py`).
@@ -11,7 +11,7 @@ The backend of the Ember AI conversational agent, built with **FastAPI** and **L
 - **Multi-Model Routing**: Powered by NVIDIA NIM and OpenAI-compatible endpoints to dynamically route tasks to the best model (e.g., DeepSeek, Mistral, FLUX).
 - **Document Intelligence (RAG)**: Built-in support for parsing and embedding PDFs, CSVs, and Excel files.
 
-## ⚙️ Installation & Setup
+## Installation & Setup
 
 1. Copy the example environment file:
    ```bash
@@ -31,7 +31,7 @@ The backend of the Ember AI conversational agent, built with **FastAPI** and **L
 
 The FastAPI server will start on `http://localhost:8080`.
 
-## 📁 Project Structure
+## Project Structure
 - `agent/`: Contains the LangGraph implementation, including the supervisor architecture and memory lifecycle scripts (decay/resurfacing).
 - `database.py`: PostgreSQL and Redis connection setup and schema models.
 - `main.py`: The FastAPI application entry point, routing, and API definitions.
