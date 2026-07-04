@@ -6,17 +6,19 @@ The agent can autonomously recall past interactions, proactively nudge you with 
 
 ## 🚀 Key Features
 
+- 🏗️ **Supervisor Agent Architecture**: A robust LangGraph-based backend orchestrating specialized AI tasks and dynamic routing.
+- 🗂️ **Project-Centric Workspace**: Fully scoped chat sessions with dynamic frontend routing for managing separate projects.
+- 🎨 **Interactive Memory Dashboard**: A visual Canvas-based workspace with `react-force-graph-2d` for real-time knowledge map visualization.
+- ⏳ **Memory Decay & Resurfacing**: An advanced memory lifecycle system that naturally decays old information while autonomously scoring and surfacing relevant past memories.
 - 🧠 **Persistent Memory System**: Utilizes a Redis "sensory buffer" that dynamically consolidates into long-term episodic and semantic memory using PostgreSQL and `pgvector`.
-- 🔄 **Proactive Resurfacing**: The agent autonomously scores and surfaces relevant memories from past conversations at the right time.
 - 🔀 **Multi-Model Routing**: Powered by NVIDIA NIM, dynamically utilizing specific models for specific tasks (e.g., DeepSeek for logic, FLUX for image generation, Mistral for fast chat, Gemma, Qwen, GLM, Kimi).
 - 📄 **Document Intelligence (RAG)**: Upload PDFs, CSVs, and Excel files. The system automatically chunks, embeds, and performs semantic search to answer questions accurately based on your documents.
 - 💻 **Code Sandboxing**: Built-in tools for the agent to safely read, write, and execute code in isolated workspace environments (Ember Code tools).
-- 📊 **Analytics Dashboard**: Built-in monitoring for model token usage, chat frequency, and memory statistics.
-- 📤 **Export Capabilities**: Export your conversational threads to Markdown or PDF.
+- ✨ **UI & Animations**: A premium frontend experience featuring Framer Motion for custom entry effects, micro-animations, and dynamic feedback.
 
 ## 🏗️ Architecture
 
-- **Frontend**: Next.js (React), TailwindCSS, Framer Motion
+- **Frontend**: Next.js (React), TailwindCSS, Framer Motion, React Force Graph
 - **Backend**: FastAPI (Python), LangGraph
 - **Database**: PostgreSQL (with `pgvector` for embeddings), Redis (for caching and sensory buffer)
 - **AI/LLMs**: NVIDIA NIM endpoints (Mistral, DeepSeek, Llama, FLUX, etc.), OpenAI (fallback compatibility)
