@@ -81,6 +81,13 @@ export const getEpisodicMemories = () =>
 
 export const getMemoryStats = () => getJSON<MemoryStats>("/memory/stats");
 
+export const getMemoryGraph = () => getJSON<any>("/memory/graph");
+export const getMemoryFacts = () => getJSON<any[]>("/memory/facts");
+export async function deleteMemoryFact(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/memory/facts/${id}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`delete memory fact failed: ${res.status}`);
+}
+
 export type UserProfile = {
   preferred_language: string;
   asking_tone: string;

@@ -2,19 +2,19 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import dynamic from "next/dynamic";
+import { getMemoryGraph, getMemoryFacts, deleteMemoryFact } from "../../lib/api";
 
 const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), { ssr: false });
 
 export default function MemoryDashboard() {
   const [activeTab, setActiveTab] = useState<"graph" | "list">("graph");
   const [graphData, setGraphData] = useState({ nodes: [], links: [] });
-  const [facts, setFacts] = useState([]);
+  const [facts, setFacts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchGraph = async () => {
     try {
-      const res = await fetch("http://localhost:8080/memory/graph");
-      const data = await res.json();
+      const data = await getMemoryGraph();
       setGraphData(data);
     } catch (e) {
       console.error(e);
@@ -23,8 +23,7 @@ export default function MemoryDashboard() {
 
   const fetchFacts = async () => {
     try {
-      const res = await fetch("http://localhost:8080/memory/facts");
-      const data = await res.json();
+      const data = await getMemoryFacts();
       setFacts(data);
     } catch (e) {
       console.error(e);
@@ -33,7 +32,7 @@ export default function MemoryDashboard() {
 
   const deleteFact = async (id: string) => {
     try {
-      await fetch(`http://localhost:8080/memory/facts/${id}`, { method: "DELETE" });
+      await deleteMemoryFact(id);
       fetchFacts();
       fetchGraph();
     } catch (e) {
