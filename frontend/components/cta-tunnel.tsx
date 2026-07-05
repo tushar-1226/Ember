@@ -37,12 +37,14 @@ export function CTATunnel() {
   );
 
   // INTRO: Explore the depth (0.0 - 0.1)
-  // Exponential scaling for a cinematic deep zoom
-  const introScale = useTransform(scrollYProgress, [0.0, 0.04, 0.07, 0.1], [1, 3, 20, 200]);
-  const introOpacity = useTransform(scrollYProgress, [0.0, 0.02, 0.09, 0.1], [0, 1, 1, 0]);
+  // Cinematic deep zoom. We fade out and blur before the scale gets too extreme to prevent pixelation.
+  const introScale = useTransform(scrollYProgress, [0.0, 0.04, 0.07, 0.1], [1, 2.5, 12, 60]);
+  const introOpacity = useTransform(scrollYProgress, [0.0, 0.02, 0.06, 0.09], [0, 1, 1, 0]);
+  const introBlur = useTransform(scrollYProgress, [0.05, 0.09], ["blur(0px)", "blur(15px)"]);
+  
   // Offset the text so the camera pushes perfectly into the letter "p" in "depths"
-  const introX = useTransform(scrollYProgress, [0.0, 0.1], ["0vw", "-50vw"]);
-  const introY = useTransform(scrollYProgress, [0.0, 0.1], ["0vh", "15vh"]);
+  const introX = useTransform(scrollYProgress, [0.0, 0.1], ["0vw", "-25vw"]);
+  const introY = useTransform(scrollYProgress, [0.0, 0.1], ["0vh", "8vh"]);
 
   const textStr = "Explore the depths of Ember.";
   const typeContainer = {
@@ -679,8 +681,8 @@ export function CTATunnel() {
 
         {/* --- INTRO TEXT --- */}
         <motion.div 
-          className="absolute inset-0 flex items-center justify-center pointer-events-none will-change-transform" 
-          style={{ scale: introScale, opacity: introOpacity, x: introX, y: introY }}
+          className="absolute inset-0 flex items-center justify-center pointer-events-none" 
+          style={{ scale: introScale, opacity: introOpacity, x: introX, y: introY, filter: introBlur }}
         >
            <motion.h2 
              variants={typeContainer}

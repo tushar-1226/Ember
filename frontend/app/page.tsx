@@ -6,6 +6,8 @@ import { PrinciplesGrid } from "@/components/principles-grid";
 import { MagicMoment } from "@/components/magic-moment";
 import { FeatureShowcase } from "@/components/feature-showcase";
 import { UnderTheHood } from "@/components/under-the-hood";
+import { EcosystemIntegrations } from "@/components/ecosystem-integrations";
+import { MemoryAnalytics } from "@/components/memory-analytics";
 import { CustomizeBento } from "@/components/customize-bento";
 import { CTATunnel } from "@/components/cta-tunnel";
 import { Footer } from "@/components/footer";
@@ -86,6 +88,12 @@ export default function Home() {
 
       {/* ---------- Behind the Code ---------- */}
       <UnderTheHood />
+
+      {/* ---------- Ecosystem Integrations ---------- */}
+      <EcosystemIntegrations />
+
+      {/* ---------- Memory Analytics ---------- */}
+      <MemoryAnalytics />
 
       {/* ---------- Customize ---------- */}
       <CustomizeBento />
