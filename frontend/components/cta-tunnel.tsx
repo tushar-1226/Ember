@@ -123,8 +123,8 @@ export function CTATunnel() {
         
         {/* Massive Radial Glow Background */}
         <motion.div 
-          className="absolute top-1/2 left-1/2 h-[600px] w-[800px] -translate-x-1/2 -translate-y-1/2 rounded-[100%] bg-ember-amber/20 blur-[120px]" 
-          style={{ opacity: globalGlowOpacity }}
+          className="absolute top-1/2 left-1/2 h-[800px] w-[1000px] -translate-x-1/2 -translate-y-1/2 bg-[radial-gradient(ellipse_at_center,rgba(255,183,77,0.2)_0%,transparent_70%)]" 
+          style={{ opacity: globalGlowOpacity, transform: "translateZ(0)" }}
         />
 
         {/* Outer 3D Grid */}
@@ -143,9 +143,9 @@ export function CTATunnel() {
         {/* ================= 8 ENVIRONMENTS ================= */}
 
         {/* ENV 1: Cobweb */}
-        <motion.div className="absolute inset-0 pointer-events-none overflow-hidden origin-center will-change-transform" style={{ opacity: f1Opacity, scale: f1BgScale }}>
+        <motion.div className="absolute inset-0 pointer-events-none overflow-hidden origin-center will-change-transform" style={{ opacity: f1Opacity, scale: f1BgScale, transform: "translateZ(0)" }}>
            {mounted && (
-           <svg className="absolute inset-0 w-full h-full opacity-50 text-ember-amber" viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid slice" fill="none" stroke="currentColor">
+           <svg shapeRendering="optimizeSpeed" className="absolute inset-0 w-full h-full opacity-50 text-ember-amber" viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid slice" fill="none" stroke="currentColor">
               
               {/* Web 1: Top Left */}
               <g transform="translate(100, 150)">
@@ -419,18 +419,18 @@ export function CTATunnel() {
              <div className="absolute bottom-10 w-[260px] h-[120px] bg-[#050505] border-t-2 border-current rounded-t-lg shadow-[0_-10px_30px_rgba(5,5,5,0.9)] z-10" />
              
              {/* Glowing effect inside folder */}
-             <div className="absolute bottom-10 w-[240px] h-4 bg-current blur-[20px] opacity-40 z-0" />
+             <div className="absolute bottom-10 w-[240px] h-[40px] translate-y-4 bg-[radial-gradient(ellipse_at_center,currentColor_0%,transparent_70%)] opacity-40 z-0" style={{ transform: "translateZ(0)" }} />
            </div>
         </motion.div>
 
         {/* ENV 5: Neural Data Wires */}
-        <motion.div className="absolute inset-0 pointer-events-none flex items-center justify-center will-change-transform" style={{ opacity: f5BgOpacity, scale: f5Scale }}>
+        <motion.div className="absolute inset-0 pointer-events-none flex items-center justify-center will-change-transform" style={{ opacity: f5BgOpacity, scale: f5Scale, transform: "translateZ(0)" }}>
            {/* Central Core Glow */}
-           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-blue-600/30 rounded-full blur-[80px]" />
-           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-cyan-400/20 rounded-full blur-[40px]" />
+           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-[radial-gradient(circle,rgba(37,99,235,0.3)_0%,transparent_70%)]" style={{ transform: "translateZ(0)" }} />
+           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200px] h-[200px] bg-[radial-gradient(circle,rgba(34,211,238,0.2)_0%,transparent_70%)]" style={{ transform: "translateZ(0)" }} />
 
            {mounted && (
-           <svg className="absolute inset-0 w-full h-full" viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid slice" fill="none" strokeLinecap="round">
+           <svg shapeRendering="optimizeSpeed" className="absolute inset-0 w-full h-full" viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid slice" fill="none" strokeLinecap="round">
               
               {/* Dazzling Wires generated procedurally */}
               {Array.from({ length: 60 }).map((_, i) => {
@@ -476,13 +476,13 @@ export function CTATunnel() {
         </motion.div>
 
         {/* ENV 6: Radial Core Network */}
-        <motion.div className="absolute inset-0 pointer-events-none flex items-center justify-center will-change-transform overflow-hidden" style={{ opacity: f6Opacity, scale: f6Scale }}>
+        <motion.div className="absolute inset-0 pointer-events-none flex items-center justify-center will-change-transform overflow-hidden" style={{ opacity: f6Opacity, scale: f6Scale, transform: "translateZ(0)" }}>
            {/* Deep Blue Background Glow for the Core */}
-           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-blue-500/20 rounded-full blur-[100px]" />
-           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[100px] h-[100px] bg-cyan-400/40 rounded-full blur-[40px]" />
+           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[radial-gradient(circle,rgba(59,130,246,0.2)_0%,transparent_70%)]" style={{ transform: "translateZ(0)" }} />
+           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[180px] h-[180px] bg-[radial-gradient(circle,rgba(34,211,238,0.4)_0%,transparent_70%)]" style={{ transform: "translateZ(0)" }} />
 
            {mounted && (
-               <svg className="absolute inset-0 w-full h-full" viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid slice" fill="none">
+               <svg shapeRendering="optimizeSpeed" className="absolute inset-0 w-full h-full" viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid slice" fill="none">
                  {/* Central Core Rings */}
                  <circle cx="500" cy="500" r="30" fill="none" stroke="#38bdf8" strokeWidth="4" />
                  <circle cx="500" cy="500" r="45" fill="none" stroke="#0ea5e9" strokeWidth="2" opacity="0.6" strokeDasharray="10 10" />
@@ -608,7 +608,7 @@ export function CTATunnel() {
 
            <div className="relative w-[1000px] h-[1000px] will-change-transform">
              {mounted && (
-               <svg className="absolute inset-0 w-full h-full" viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid slice" fill="none">
+               <svg shapeRendering="optimizeSpeed" className="absolute inset-0 w-full h-full" viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid slice" fill="none">
                  {/* Unified Dense Graph */}
                  {(() => {
                    const nodes = Array.from({ length: 180 }).map((_, i) => {

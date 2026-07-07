@@ -58,7 +58,7 @@ function Card({ f, i }: { f: typeof FEATURES[0]; i: number }) {
     >
       {/* Tracer Wire Border (Rotating Conic Gradient) */}
       <div 
-        className="absolute inset-[-150%] animate-[spin_3s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#00000000_70%,#ffb74d_100%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" 
+        className="absolute inset-[-150%] animate-[spin_3s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#00000000_70%,#ffb74d_100%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100 will-change-transform transform-gpu" 
       />
       
       {/* Inner Solid Card */}
@@ -242,8 +242,8 @@ export function UnderTheHood() {
 
         <motion.div 
           ref={scrollRef}
-          style={{ x }} 
-          className="flex gap-6 pl-6 pt-32 md:pl-12 lg:pl-24 pr-6 md:pr-12 lg:pr-24 items-stretch h-[450px] w-max"
+          style={{ x, z: 0 }} 
+          className="flex gap-6 pl-6 pt-32 md:pl-12 lg:pl-24 pr-6 md:pr-12 lg:pr-24 items-stretch h-[450px] w-max will-change-transform"
         >
           {FEATURES.map((f, i) => (
             <Card key={f.id} f={f} i={i} />
