@@ -14,12 +14,16 @@ const INTEGRATIONS = [
   { name: "Slack", x: "20%", y: "80%", delay: 0.4 },
   { name: "Calendar", x: "50%", y: "90%", delay: 1.2 },
   { name: "Obsidian", x: "80%", y: "80%", delay: 0.6 },
+  { name: "Read", x: "30%", y: "40%", delay: 0.9 },
 ];
+
+import { getFlowerConnections, FlowerConnection } from "@/lib/api";
 
 export function EcosystemIntegrations() {
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [isDone, setIsDone] = useState(false);
+  const [connections, setConnections] = useState<FlowerConnection[]>([]);
   
   // The terminal command changes dynamically based on interactivity
   const targetText = hoveredNode 
@@ -47,6 +51,10 @@ export function EcosystemIntegrations() {
     
     return () => clearTimeout(timeoutId);
   }, [targetText]);
+
+  useEffect(() => {
+    getFlowerConnections().then(setConnections).catch(() => {});
+  }, []);
 
   return (
     <section className="relative min-h-[140vh] w-full bg-[#030303] overflow-hidden flex flex-col items-center justify-center border-t border-border-soft/30 py-32 font-mono">
@@ -164,12 +172,13 @@ export function EcosystemIntegrations() {
           const isHovered = hoveredNode === node.name;
           const isAnyHovered = hoveredNode !== null;
           const isActive = isDone && (!isAnyHovered || isHovered);
+          const isConnected = connections.some(c => c.provider.toLowerCase() === node.name.toLowerCase());
 
           return (
             <motion.div 
               key={`node-${i}`}
               className={`absolute flex flex-col items-center justify-center bg-[#0a0a0a]/90 backdrop-blur-md border cursor-pointer z-20 transition-colors duration-300 ${
-                isHovered ? "border-ember-amber shadow-[0_0_30px_rgba(255,183,77,0.3)]" : "border-[#222]"
+                isHovered ? "border-ember-amber shadow-[0_0_30px_rgba(255,183,77,0.3)]" : (isConnected ? "border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.1)]" : "border-[#222]")
               }`}
               // We use tailwind classes for the width/height to make it responsive
               // Centering the absolute position by using translate-x and y
@@ -196,7 +205,7 @@ export function EcosystemIntegrations() {
               )}
               
               <span className={`text-[10px] sm:text-xs tracking-[0.2em] uppercase font-bold transition-colors ${
-                isHovered ? "text-ember-amber" : "text-muted"
+                isHovered ? "text-ember-amber" : (isConnected ? "text-emerald-500" : "text-muted")
               }`}>
                 {node.name}
               </span>

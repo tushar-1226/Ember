@@ -3,6 +3,7 @@ import { Space_Grotesk, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { SmoothScroll } from "@/components/smooth-scroll";
 import { Nav } from "@/components/nav";
+import { AuthProvider } from "@/components/auth-provider";
 import { PreferencesApplier } from "@/components/preferences-applier";
 
 const display = Space_Grotesk({ subsets: ["latin"], variable: "--font-display", display: "swap" });
@@ -25,8 +26,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     >
       <body className="min-h-full bg-background text-foreground">
         <PreferencesApplier />
-        <Nav />
-        <SmoothScroll>{children}</SmoothScroll>
+        <AuthProvider>
+          <Nav />
+          <SmoothScroll>{children}</SmoothScroll>
+        </AuthProvider>
       </body>
     </html>
   );

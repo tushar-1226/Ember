@@ -8,7 +8,11 @@ export const API_BASE =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "http://localhost:8080";
 
 async function getAuthToken(): Promise<string | null> {
-  // TODO: Retrieve token from NextAuth session
+  if (typeof window !== "undefined") {
+    const { getSession } = await import("next-auth/react");
+    const session = await getSession();
+    return (session as any)?.backendToken || null;
+  }
   return null;
 }
 
@@ -330,3 +334,32 @@ export async function streamChat(
     }
   }
 }
+
+// ---------------------------------------------------------------------------
+// Flower API
+// ---------------------------------------------------------------------------
+export type FlowerConnection = {
+  provider: string;
+  status: string;
+  last_synced: string | null;
+};
+
+export type FlowerEvent = {
+  id: string;
+  provider: string;
+  summary: string;
+  timestamp: string | null;
+};
+
+export const getFlowerConnections = () => getJSON<FlowerConnection[]>("/flower/connections");
+export const getFlowerFeed = () => getJSON<FlowerEvent[]>("/flower/feed");
+export const forceSyncFlower = () => postJSON<{ status: string }>("/flower/sync", {});
+export const connectFlowerService = (provider: string, token?: string) => postJSON<{ status: string; provider: string }>("/flower/connect", { provider, token });
+export type NotionDashboardData = {
+  status: string;
+  error?: string;
+  databases: { id: string; title: string; url: string; last_edited: string }[];
+  recent_pages: { id: string; title: string; url: string; last_edited: string }[];
+};
+
+export const getNotionDashboardData = () => getJSON<NotionDashboardData>("/flower/notion/dashboard");

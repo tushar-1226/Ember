@@ -868,25 +868,38 @@ async def get_flower_connections():
 
 class ConnectRequest(BaseModel):
     provider: str
+    token: str | None = None
 
 @app.post("/flower/connect")
 async def connect_flower_service(req: ConnectRequest):
-    """Mock endpoint to simulate OAuth connection."""
+    """Endpoint to save connection data."""
     with SessionLocal() as db:
         existing = db.query(UserConnection).filter_by(provider=req.provider).first()
+        token = req.token or "mock_token"
         if existing:
             existing.status = "connected"
+            if req.token:
+                existing.access_token = token
             existing.last_synced = datetime.utcnow()
         else:
             conn = UserConnection(
                 id=str(uuid.uuid4()),
                 provider=req.provider,
-                access_token="mock_token",
+                access_token=token,
                 status="connected"
             )
             db.add(conn)
         db.commit()
     return {"status": "success", "provider": req.provider}
+
+@app.post("/flower/sync")
+async def force_sync_flower():
+    """Manually force sync all connected services."""
+    from agent.flower import sync_spotify_real, sync_notion_real, sync_obsidian_real
+    await sync_spotify_real()
+    await sync_notion_real()
+    await sync_obsidian_real()
+    return {"status": "success"}
 
 @app.get("/flower/feed")
 async def get_flower_feed():
@@ -900,6 +913,138 @@ async def get_flower_feed():
                 "timestamp": e.timestamp.isoformat() if e.timestamp else None
             } for e in events
         ]
+
+@app.get("/flower/notion/dashboard")
+async def get_notion_dashboard():
+    with SessionLocal() as db:
+        connection = db.query(UserConnection).filter_by(provider="notion", status="connected").first()
+        if not connection or not connection.access_token:
+            return {"error": "Notion not connected"}
+            
+        import httpx
+        headers = {
+            "Authorization": f"Bearer {connection.access_token}",
+            "Notion-Version": "2022-06-28",
+            "Content-Type": "application/json"
+        }
+        
+        async with httpx.AsyncClient() as client:
+            res = await client.post(
+                "https://api.notion.com/v1/search",
+                headers=headers,
+                json={
+                    "sort": {"direction": "descending", "timestamp": "last_edited_time"},
+                    "page_size": 20
+                }
+            )
+            
+            if res.status_code != 200:
+                return {"error": "Failed to fetch from Notion API", "details": res.text}
+                
+            data = res.json()
+            
+            databases = []
+            pages = []
+            
+            for item in data.get("results", []):
+                obj_type = item.get("object")
+                title = "Untitled"
+                
+                if "properties" in item:
+                    for prop_name, prop_data in item["properties"].items():
+                        if prop_data.get("type") == "title":
+                            title_arr = prop_data.get("title", [])
+                            if title_arr:
+                                title = title_arr[0].get("plain_text", title)
+                            break
+                elif "title" in item:
+                    title_arr = item.get("title", [])
+                    if title_arr:
+                        title = title_arr[0].get("plain_text", title)
+                
+                url = item.get("url", "")
+                last_edited = item.get("last_edited_time")
+                
+                entry = {
+                    "id": item.get("id"),
+                    "title": title,
+                    "url": url,
+                    "last_edited": last_edited
+                }
+                
+                if obj_type == "database":
+                    databases.append(entry)
+                elif obj_type == "page":
+                    pages.append(entry)
+            
+            return {
+                "status": "success",
+                "databases": databases,
+                "recent_pages": pages
+            }
+
+@app.get("/auth/spotify/login")
+async def spotify_login():
+    import os, urllib.parse
+    from fastapi.responses import RedirectResponse
+    client_id = os.getenv("SPOTIFY_CLIENT_ID")
+    redirect_uri = "http://localhost:8000/auth/spotify/callback"
+    if not client_id:
+        return {"error": "SPOTIFY_CLIENT_ID not set in .env"}
+    
+    scope = "user-read-recently-played"
+    query = urllib.parse.urlencode({
+        "response_type": "code",
+        "client_id": client_id,
+        "scope": scope,
+        "redirect_uri": redirect_uri
+    })
+    return RedirectResponse(f"https://accounts.spotify.com/authorize?{query}")
+
+@app.get("/auth/spotify/callback")
+async def spotify_callback(code: str):
+    import os, base64, httpx
+    from fastapi.responses import RedirectResponse
+    client_id = os.getenv("SPOTIFY_CLIENT_ID")
+    client_secret = os.getenv("SPOTIFY_CLIENT_SECRET")
+    redirect_uri = "http://localhost:8000/auth/spotify/callback"
+    
+    auth_str = f"{client_id}:{client_secret}"
+    b64_auth_str = base64.b64encode(auth_str.encode()).decode()
+    
+    async with httpx.AsyncClient() as client:
+        res = await client.post(
+            "https://accounts.spotify.com/api/token",
+            data={
+                "grant_type": "authorization_code",
+                "code": code,
+                "redirect_uri": redirect_uri
+            },
+            headers={
+                "Authorization": f"Basic {b64_auth_str}",
+                "Content-Type": "application/x-www-form-urlencoded"
+            }
+        )
+        if res.status_code == 200:
+            token_data = res.json()
+            access_token = token_data.get("access_token")
+            with SessionLocal() as db:
+                existing = db.query(UserConnection).filter_by(provider="spotify").first()
+                if existing:
+                    existing.status = "connected"
+                    existing.access_token = access_token
+                    existing.last_synced = datetime.utcnow()
+                else:
+                    conn = UserConnection(
+                        id=str(uuid.uuid4()),
+                        provider="spotify",
+                        access_token=access_token,
+                        status="connected"
+                    )
+                    db.add(conn)
+                db.commit()
+            return RedirectResponse("http://localhost:3000/flower/dashboard")
+        return {"error": "Failed to get token", "details": res.text}
 
 class SettingsRequest(BaseModel):
     allow_notifications: bool

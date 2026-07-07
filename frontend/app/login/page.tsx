@@ -10,15 +10,30 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    // TODO: Implement NextAuth signIn
-    setTimeout(() => {
+    setError(null);
+    try {
+      const { signIn } = await import("next-auth/react");
+      const res = await signIn("credentials", {
+        email,
+        password,
+        redirect: false
+      });
+      
+      if (res?.error) {
+        setError("Invalid credentials. Please try again.");
+        setIsLoading(false);
+      } else {
+        router.push("/reflect");
+      }
+    } catch (err) {
+      console.error(err);
       setIsLoading(false);
-      router.push("/reflect");
-    }, 1500);
+    }
   };
 
   const mouseX = useMotionValue(0);
@@ -103,6 +118,16 @@ export default function LoginPage() {
             Sign in to continue to Ember.
           </p>
         </div>
+
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-400 text-center"
+          >
+            {error}
+          </motion.div>
+        )}
 
         <form onSubmit={handleLogin} className="flex flex-col gap-5">
           <div className="flex flex-col gap-2">

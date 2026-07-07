@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import { getFlowerConnections, getFlowerFeed, forceSyncFlower, connectFlowerService, FlowerConnection, FlowerEvent } from "@/lib/api";
 
 function CustomSelect({ options, value, onChange }: { options: string[], value: string, onChange: (val: string) => void }) {
   const [open, setOpen] = useState(false);
@@ -55,13 +56,196 @@ function CustomSelect({ options, value, onChange }: { options: string[], value: 
   );
 }
 
+const PROVIDER_INFO: Record<string, { label: string, color: string, icon: React.ReactNode, action: string }> = {
+  spotify: {
+    label: "Spotify",
+    color: "#1DB954",
+    action: "Listening",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+        <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424c-.18.295-.573.398-.868.217-2.378-1.45-5.37-1.78-8.895-.975-.336.077-.666-.134-.743-.47-.077-.335.134-.665.47-.743 3.864-.882 7.16-.497 9.818 1.103.296.18.4.573.218.868zm1.31-2.923c-.226.37-.714.485-1.085.258-2.723-1.674-6.9-2.188-10.158-1.2-1.087.33-2.158-.293-2.487-1.38-.073-.243-.132-.51.137-.768.243-.242.493-.19.723-.118 3.754 1.138 8.423.57 11.613-1.385.37-.226.858-.112 1.084.257.227.37.113.858-.258 1.084l.43.653zm.126-3.05c-3.256-1.93-8.618-2.11-11.724-1.168-.454.137-.923-.117-1.06-.572-.138-.454.117-.924.573-1.06 3.633-1.102 9.544-.897 13.34 1.353.407.24.542.766.302 1.173-.24.406-.767.54-1.173.303h-.258z" />
+      </svg>
+    )
+  },
+  notion: {
+    label: "Notion",
+    color: "#fff",
+    action: "Reading",
+    icon: <span className="font-mono text-sm font-bold text-black">N</span>
+  },
+  github: {
+    label: "GitHub",
+    color: "#fff",
+    action: "Coding",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+        <path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.379.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.161 22 16.416 22 12c0-5.523-4.477-10-10-10z"/>
+      </svg>
+    )
+  },
+  obsidian: {
+    label: "Obsidian",
+    color: "#7a3ff0",
+    action: "Writing",
+    icon: <span className="font-mono text-sm font-bold text-white">O</span>
+  },
+  slack: {
+    label: "Slack",
+    color: "#E01E5A",
+    action: "Chatting",
+    icon: <span className="font-mono text-sm font-bold text-white">S</span>
+  },
+  read: {
+    label: "Read",
+    color: "#facc15",
+    action: "Learning",
+    icon: <span className="font-mono text-sm font-bold text-black">R</span>
+  }
+};
+
+function ConnectDropdown({ availableProviders, onConnect }: { availableProviders: string[], onConnect: (provider: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  if (availableProviders.length === 0) return null;
+
+  return (
+    <div className="relative flex min-h-[140px]" ref={ref}>
+      <div 
+        onClick={() => setOpen(!open)}
+        className="w-full flex cursor-pointer items-center justify-center rounded-2xl border border-dashed border-border-soft bg-transparent p-5 transition-colors hover:border-border hover:bg-surface/50"
+      >
+        <div className="text-center">
+          <span className="grid h-8 w-8 mx-auto mb-2 place-items-center rounded-full bg-raised text-muted">+</span>
+          <p className="text-sm font-medium text-muted">Connect App</p>
+        </div>
+      </div>
+      
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.15 }}
+            className="absolute left-0 top-0 z-50 w-full overflow-hidden rounded-2xl border border-border-soft bg-surface shadow-2xl p-2"
+          >
+            <p className="px-2 py-2 text-xs font-semibold uppercase tracking-wider text-muted">Select App</p>
+            <div className="flex flex-col gap-1 max-h-[160px] overflow-y-auto">
+              {availableProviders.map(provider => {
+                const info = PROVIDER_INFO[provider.toLowerCase()] || { label: provider, icon: <span>?</span>, color: "#fff" };
+                return (
+                  <button
+                    key={provider}
+                    onClick={() => { onConnect(provider); setOpen(false); }}
+                    className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left text-sm transition-colors hover:bg-raised"
+                  >
+                    <div 
+                      className="flex h-6 w-6 items-center justify-center rounded-md"
+                      style={{ backgroundColor: info.color, color: info.color === "#fff" || info.color === "#facc15" ? "#000" : "#fff" }}
+                    >
+                      <div className="scale-75">{info.icon}</div>
+                    </div>
+                    <span className="font-medium text-foreground">{info.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 export default function FlowerDashboardPage() {
   const [deliveryMethod, setDeliveryMethod] = useState("Desktop Notification");
   const [dataRetention, setDataRetention] = useState("Keep forever");
 
+  const [connections, setConnections] = useState<FlowerConnection[]>([]);
+  const [feed, setFeed] = useState<FlowerEvent[]>([]);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [promptModal, setPromptModal] = useState<{ isOpen: boolean; title: string; placeholder: string; resolve: (val: string | null) => void } | null>(null);
+
+  const askForToken = (title: string, placeholder: string) => {
+    return new Promise<string | null>((resolve) => {
+      setPromptModal({ isOpen: true, title, placeholder, resolve });
+    });
+  };
+
+  const fetchData = useCallback(async () => {
+    try {
+      const [connData, feedData] = await Promise.all([
+        getFlowerConnections(),
+        getFlowerFeed()
+      ]);
+      setConnections(connData);
+      setFeed(feedData);
+    } catch (e) {
+      console.error("Failed to load flower data", e);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+    // Poll every 30s
+    const interval = setInterval(fetchData, 30000);
+    return () => clearInterval(interval);
+  }, [fetchData]);
+
+  const handleForceSync = async () => {
+    setIsSyncing(true);
+    try {
+      await forceSyncFlower();
+      await fetchData();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const ALL_PROVIDERS = Object.keys(PROVIDER_INFO);
+  const connectedProviders = connections.map(c => c.provider.toLowerCase());
+  const availableProviders = ALL_PROVIDERS.filter(p => !connectedProviders.includes(p));
+
+  const handleConnect = async (provider: string) => {
+    if (provider.toLowerCase() === "spotify") {
+      window.location.href = "http://localhost:8000/auth/spotify/login";
+      return;
+    }
+    
+    let token: string | null | undefined = undefined;
+    if (provider.toLowerCase() === "notion") {
+      token = await askForToken("Notion Integration", "Enter your Internal Integration Token...");
+      if (!token) return;
+    } else if (provider.toLowerCase() === "obsidian") {
+      token = await askForToken("Obsidian Vault", "Enter absolute path (e.g. /home/user/Documents/Vault)...");
+      if (!token) return;
+    }
+    
+    try {
+      await connectFlowerService(provider, token);
+      await fetchData(); // Refresh connections
+    } catch (e) {
+      console.error("Failed to connect", e);
+    }
+  };
+
   return (
-    <main className="relative min-h-screen pb-32 pt-24">
-      {/* Header - Full Width */}
+    <>
+      <main className="relative min-h-screen pb-32 pt-24">
+        {/* Header - Full Width */}
       <section className="px-6 py-8 md:px-12 lg:px-16 w-full border-b border-border-soft bg-surface/30">
         <div className="w-full">
           <Link href="/flower" className="mb-6 inline-flex items-center gap-2 text-sm text-faint transition-colors hover:text-foreground">
@@ -81,12 +265,16 @@ export default function FlowerDashboardPage() {
             <div className="flex items-center gap-3">
               <span className="flex items-center gap-2 text-sm text-faint">
                 <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75"></span>
+                  <span className={`absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75 ${isSyncing ? "animate-ping" : ""}`}></span>
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
                 </span>
-                Syncing Active
+                {isSyncing ? "Syncing..." : "Sync Active"}
               </span>
-              <button className="rounded-full bg-raised px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-border-soft">
+              <button 
+                onClick={handleForceSync}
+                disabled={isSyncing}
+                className="rounded-full bg-raised px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-border-soft disabled:opacity-50"
+              >
                 Force Sync
               </button>
             </div>
@@ -108,59 +296,41 @@ export default function FlowerDashboardPage() {
                 <Link href="#" className="text-sm font-medium text-muted hover:text-foreground">Browse all apps &rarr;</Link>
               </div>
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {/* Spotify */}
-                <div className="flex flex-col justify-between rounded-2xl border border-border-soft bg-surface p-5 shadow-sm transition-transform hover:-translate-y-1">
-                  <div className="flex items-start justify-between">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1DB954]/10 text-[#1DB954]">
-                      <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
-                        <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424c-.18.295-.573.398-.868.217-2.378-1.45-5.37-1.78-8.895-.975-.336.077-.666-.134-.743-.47-.077-.335.134-.665.47-.743 3.864-.882 7.16-.497 9.818 1.103.296.18.4.573.218.868zm1.31-2.923c-.226.37-.714.485-1.085.258-2.723-1.674-6.9-2.188-10.158-1.2-1.087.33-2.158-.293-2.487-1.38-.073-.243-.132-.51.137-.768.243-.242.493-.19.723-.118 3.754 1.138 8.423.57 11.613-1.385.37-.226.858-.112 1.084.257.227.37.113.858-.258 1.084l.43.653zm.126-3.05c-3.256-1.93-8.618-2.11-11.724-1.168-.454.137-.923-.117-1.06-.572-.138-.454.117-.924.573-1.06 3.633-1.102 9.544-.897 13.34 1.353.407.24.542.766.302 1.173-.24.406-.767.54-1.173.303h-.258z" />
-                      </svg>
+                {connections.map((conn) => {
+                  const info = PROVIDER_INFO[conn.provider.toLowerCase()] || { label: conn.provider, color: "#fff", action: "Active", icon: <span>?</span> };
+                  return (
+                    <div key={conn.provider} className="flex flex-col justify-between rounded-2xl border border-border-soft bg-surface p-5 shadow-sm transition-transform hover:-translate-y-1">
+                      <div className="flex items-start justify-between">
+                        <div 
+                          className="flex h-10 w-10 items-center justify-center rounded-xl"
+                          style={{ backgroundColor: info.color, color: info.color === "#fff" || info.color === "#facc15" ? "#000" : "#fff" }}
+                        >
+                          {info.icon}
+                        </div>
+                        <span className="rounded-full px-2.5 py-0.5 text-xs font-medium" style={{ backgroundColor: `${info.color}20`, color: info.color }}>
+                          {info.action}
+                        </span>
+                      </div>
+                      <div className="mt-4 flex flex-col gap-2">
+                        <div>
+                          <p className="font-medium text-foreground">{info.label}</p>
+                          <p className="text-xs text-muted">Last synced: {conn.last_synced ? new Date(conn.last_synced + 'Z').toLocaleTimeString() : 'Never'}</p>
+                        </div>
+                        {conn.provider.toLowerCase() === "notion" && (
+                          <Link href="/flower/dashboard/notion" className="mt-2 text-center rounded bg-ember-gold/10 px-3 py-1.5 text-xs font-medium text-ember-gold transition-colors hover:bg-ember-gold/20">
+                            View Dashboard &rarr;
+                          </Link>
+                        )}
+                      </div>
                     </div>
-                    <span className="rounded-full bg-[#1DB954]/10 px-2.5 py-0.5 text-xs font-medium text-[#1DB954]">Listening</span>
-                  </div>
-                  <div className="mt-4">
-                    <p className="font-medium text-foreground">Spotify</p>
-                    <p className="text-xs text-muted">Last synced: 2m ago</p>
-                  </div>
-                </div>
-                
-                {/* Notion */}
-                <div className="flex flex-col justify-between rounded-2xl border border-border-soft bg-surface p-5 shadow-sm transition-transform hover:-translate-y-1">
-                  <div className="flex items-start justify-between">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-foreground text-void">
-                      <span className="font-mono text-sm font-bold">N</span>
-                    </div>
-                    <span className="rounded-full bg-accent/10 px-2.5 py-0.5 text-xs font-medium text-accent">Reading</span>
-                  </div>
-                  <div className="mt-4">
-                    <p className="font-medium text-foreground">Notion</p>
-                    <p className="text-xs text-muted">Last synced: 1h ago</p>
-                  </div>
-                </div>
-
-                {/* GitHub (New) */}
-                <div className="flex flex-col justify-between rounded-2xl border border-border-soft bg-surface p-5 shadow-sm transition-transform hover:-translate-y-1">
-                  <div className="flex items-start justify-between">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-border-soft text-foreground">
-                      <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
-                        <path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.379.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.161 22 16.416 22 12c0-5.523-4.477-10-10-10z"/>
-                      </svg>
-                    </div>
-                    <span className="rounded-full bg-border-soft px-2.5 py-0.5 text-xs font-medium text-foreground">Paused</span>
-                  </div>
-                  <div className="mt-4">
-                    <p className="font-medium text-foreground">GitHub</p>
-                    <p className="text-xs text-muted">Sync paused (auth needed)</p>
-                  </div>
-                </div>
+                  );
+                })}
                 
                 {/* Add New */}
-                <div className="flex min-h-[140px] cursor-pointer items-center justify-center rounded-2xl border border-dashed border-border-soft bg-transparent p-5 transition-colors hover:border-border hover:bg-surface/50">
-                  <div className="text-center">
-                    <span className="grid h-8 w-8 mx-auto mb-2 place-items-center rounded-full bg-raised text-muted">+</span>
-                    <p className="text-sm font-medium text-muted">Connect App</p>
-                  </div>
-                </div>
+                <ConnectDropdown 
+                  availableProviders={availableProviders} 
+                  onConnect={handleConnect} 
+                />
               </div>
             </section>
 
@@ -169,28 +339,23 @@ export default function FlowerDashboardPage() {
               <section>
                 <h2 className="mb-6 font-display text-xl font-medium text-foreground">Ambient Feed</h2>
                 <div className="relative border-l border-border-soft pl-6">
-                  
-                  <div className="relative mb-8 last:mb-0">
-                    <div className="absolute -left-[29px] top-1 h-2 w-2 rounded-full bg-[#1DB954] shadow-[0_0_8px_#1DB954]" />
-                    <p className="text-sm text-faint">Just now · Spotify</p>
-                    <p className="mt-1 font-medium text-foreground">Listened to &quot;Weightless&quot; by Marconi Union</p>
-                    <p className="mt-1 text-sm text-muted">Ember noted a pattern of deep focus ambient music.</p>
-                  </div>
-                  
-                  <div className="relative mb-8 last:mb-0">
-                    <div className="absolute -left-[29px] top-1 h-2 w-2 rounded-full bg-foreground" />
-                    <p className="text-sm text-faint">2 hours ago · Notion</p>
-                    <p className="mt-1 font-medium text-foreground">Updated &quot;Q3 Goals &amp; OKRs&quot;</p>
-                    <p className="mt-1 text-sm text-muted">Added 3 new action items regarding the upcoming launch.</p>
-                  </div>
-                  
-                  <div className="relative mb-8 last:mb-0">
-                    <div className="absolute -left-[29px] top-1 h-2 w-2 rounded-full bg-ember-gold" />
-                    <p className="text-sm text-faint">Yesterday · Ember</p>
-                    <p className="mt-1 font-medium text-foreground">Proactive Check-in</p>
-                    <p className="mt-1 text-sm text-muted">Ember asked how you felt about your deadlines; you mentioned feeling slightly overwhelmed.</p>
-                  </div>
-
+                  {feed.length === 0 && <p className="text-sm text-muted">No recent events.</p>}
+                  {feed.map((event) => {
+                    const info = PROVIDER_INFO[event.provider.toLowerCase()] || { label: event.provider, color: "#fff" };
+                    return (
+                      <div key={event.id} className="relative mb-8 last:mb-0">
+                        <div 
+                          className="absolute -left-[29px] top-1 h-2 w-2 rounded-full" 
+                          style={{ backgroundColor: info.color, boxShadow: `0 0 8px ${info.color}` }}
+                        />
+                        <p className="text-sm text-faint">
+                          {event.timestamp ? new Date(event.timestamp + 'Z').toLocaleString() : "Just now"} · {info.label}
+                        </p>
+                        <p className="mt-1 font-medium text-foreground">{event.summary}</p>
+                        <p className="mt-1 text-sm text-muted">Synced successfully.</p>
+                      </div>
+                    );
+                  })}
                 </div>
               </section>
 
@@ -309,5 +474,61 @@ export default function FlowerDashboardPage() {
         </div>
       </div>
     </main>
+
+    {/* Custom Prompt Modal */}
+      <AnimatePresence>
+        {promptModal?.isOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }} 
+              animate={{ scale: 1, opacity: 1 }} 
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-md rounded-2xl border border-border-soft bg-surface p-6 shadow-2xl"
+            >
+              <h3 className="mb-4 font-display text-lg font-medium text-foreground">{promptModal.title}</h3>
+              <input 
+                type="text" 
+                autoFocus
+                placeholder={promptModal.placeholder}
+                className="mb-6 w-full rounded-lg border border-border-soft bg-raised px-4 py-3 text-sm text-foreground placeholder-muted transition-colors focus:border-ember-amber focus:outline-none focus:ring-1 focus:ring-ember-amber"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    promptModal.resolve(e.currentTarget.value);
+                    setPromptModal(null);
+                  } else if (e.key === 'Escape') {
+                    promptModal.resolve(null);
+                    setPromptModal(null);
+                  }
+                }}
+                id="prompt-input"
+              />
+              <div className="flex justify-end gap-3">
+                <button 
+                  onClick={() => { promptModal.resolve(null); setPromptModal(null); }}
+                  className="rounded-lg px-4 py-2 text-sm font-medium text-muted transition-colors hover:bg-raised hover:text-foreground"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={() => {
+                    const input = document.getElementById("prompt-input") as HTMLInputElement;
+                    promptModal.resolve(input?.value || "");
+                    setPromptModal(null);
+                  }}
+                  className="rounded-lg bg-ember-amber px-4 py-2 text-sm font-medium text-void transition-colors hover:bg-ember-amber/90"
+                >
+                  Confirm
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
