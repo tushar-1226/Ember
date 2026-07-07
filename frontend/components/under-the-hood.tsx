@@ -142,6 +142,7 @@ function Card({ f, i }: { f: typeof FEATURES[0]; i: number }) {
               <motion.circle cx="17" cy="7" r="3" stroke="currentColor" strokeWidth="1.5" 
                 animate={{ scale: isHovered ? 1.2 : 1 }} transition={{ type: "spring", delay: 0.1 }} />
               <motion.path d="M9 15L15 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="4 4"
+                initial={{ strokeDashoffset: 0 }}
                 animate={{ strokeDashoffset: isHovered ? -20 : 0 }} transition={{ duration: 1, ease: "linear", repeat: isHovered ? Infinity : 0 }} />
             </svg>
           )}
@@ -177,6 +178,7 @@ function Card({ f, i }: { f: typeof FEATURES[0]; i: number }) {
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
               <motion.path d="M6 4H18M6 20H18M7 4V6C7 9 10 11 12 12C14 11 17 9 17 6V4M7 20V18C7 15 10 13 12 12C14 13 17 15 17 18V20" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               <motion.path d="M12 12V20" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="2 2"
+                initial={{ strokeDashoffset: 0 }}
                 animate={{ strokeDashoffset: isHovered ? 10 : 0 }} transition={{ duration: 1, ease: "linear", repeat: isHovered ? Infinity : 0 }} />
             </svg>
           )}

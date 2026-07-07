@@ -25,6 +25,8 @@ from agent.extractor import extract_memories_background
 from agent.consolidation import consolidate_sensory_to_episodic, decay_low_confidence_memories
 from agent import resurfacing
 from fastapi.responses import PlainTextResponse
+from fastapi import Depends
+from agent.auth import get_current_user
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -151,9 +153,9 @@ async def get_user_profile():
         return {"preferred_language": "Unknown", "asking_tone": "Unknown", "user_style": "Unknown"}
 
 @app.get("/chats")
-async def get_chats(project_id: Optional[str] = None):
+async def get_chats(project_id: Optional[str] = None, user_id: str = Depends(get_current_user)):
     with SessionLocal() as db:
-        query = db.query(ChatSession)
+        query = db.query(ChatSession).filter(ChatSession.user_id == user_id)
         if project_id:
             query = query.filter(ChatSession.project_id == project_id)
         else:
@@ -168,10 +170,11 @@ async def get_chat_history(session_id: str):
         return [{"id": m.id, "role": m.role, "content": m.content, "timestamp": m.timestamp.isoformat()} for m in messages]
 
 @app.delete("/chats/{session_id}")
-async def delete_chat(session_id: str):
+async def delete_chat(session_id: str, user_id: str = Depends(get_current_user)):
     with SessionLocal() as db:
+        # Optional: Verify ownership first
         db.query(ChatMessage).filter(ChatMessage.session_id == session_id).delete()
-        db.query(ChatSession).filter(ChatSession.id == session_id).delete()
+        db.query(ChatSession).filter(ChatSession.id == session_id, ChatSession.user_id == user_id).delete()
         db.commit()
     return {"status": "success"}
 
@@ -186,9 +189,9 @@ class ProjectUpdateRequest(BaseModel):
     instructions: str = None
 
 @app.get("/projects")
-async def get_projects():
+async def get_projects(user_id: str = Depends(get_current_user)):
     with SessionLocal() as db:
-        projects = db.query(Project).order_by(Project.updated_at.desc()).all()
+        projects = db.query(Project).filter(Project.user_id == user_id).order_by(Project.updated_at.desc()).all()
         return [
             {
                 "id": p.id,
@@ -201,11 +204,12 @@ async def get_projects():
         ]
 
 @app.post("/projects")
-async def create_project(req: ProjectCreateRequest):
+async def create_project(req: ProjectCreateRequest, user_id: str = Depends(get_current_user)):
     project_id = f"p-{uuid.uuid4().hex[:8]}"
     with SessionLocal() as db:
         new_proj = Project(
             id=project_id,
+            user_id=user_id,
             title=req.title,
             description=req.description,
             instructions=""
@@ -215,9 +219,9 @@ async def create_project(req: ProjectCreateRequest):
         return {"id": project_id, "title": new_proj.title, "description": new_proj.description}
 
 @app.get("/projects/{project_id}")
-async def get_project(project_id: str):
+async def get_project(project_id: str, user_id: str = Depends(get_current_user)):
     with SessionLocal() as db:
-        p = db.query(Project).filter(Project.id == project_id).first()
+        p = db.query(Project).filter(Project.id == project_id, Project.user_id == user_id).first()
         if not p:
             return {"error": "Project not found"}
         return {
@@ -246,14 +250,14 @@ async def update_project(project_id: str, req: ProjectUpdateRequest):
         return {"status": "success"}
 
 @app.delete("/projects/{project_id}")
-async def delete_project(project_id: str):
+async def delete_project(project_id: str, user_id: str = Depends(get_current_user)):
     with SessionLocal() as db:
-        chats = db.query(ChatSession).filter(ChatSession.project_id == project_id).all()
+        chats = db.query(ChatSession).filter(ChatSession.project_id == project_id, ChatSession.user_id == user_id).all()
         chat_ids = [c.id for c in chats]
         if chat_ids:
             db.query(ChatMessage).filter(ChatMessage.session_id.in_(chat_ids)).delete(synchronize_session=False)
-            db.query(ChatSession).filter(ChatSession.project_id == project_id).delete(synchronize_session=False)
-        db.query(Project).filter(Project.id == project_id).delete(synchronize_session=False)
+            db.query(ChatSession).filter(ChatSession.project_id == project_id, ChatSession.user_id == user_id).delete(synchronize_session=False)
+        db.query(Project).filter(Project.id == project_id, Project.user_id == user_id).delete(synchronize_session=False)
         db.commit()
     return {"status": "success"}
 
@@ -524,7 +528,7 @@ async def get_dashboard_analytics():
         }
 
 @app.post("/chat/stream")
-async def chat_stream(request: Request, body: ChatRequest):
+async def chat_stream(request: Request, body: ChatRequest, user_id: str = Depends(get_current_user)):
     config = {"configurable": {"thread_id": body.thread_id, "model_key": body.model_key}}
 
     # Point Ember Code's file/shell tools at this session's sandboxed workspace.
@@ -549,7 +553,7 @@ async def chat_stream(request: Request, body: ChatRequest):
             session = db.query(ChatSession).filter(ChatSession.id == body.thread_id).first()
             if not session:
                 title = body.message[:30] + ("..." if len(body.message) > 30 else "")
-                session = ChatSession(id=body.thread_id, title=title, project_id=body.project_id)
+                session = ChatSession(id=body.thread_id, user_id=user_id, title=title, project_id=body.project_id)
                 db.add(session)
             else:
                 session.updated_at = datetime.utcnow()

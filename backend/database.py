@@ -60,6 +60,7 @@ class UserProfile(Base):
 class ChatSession(Base):
     __tablename__ = "chat_sessions"
     id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, index=True, nullable=True)
     project_id = Column(String, index=True, nullable=True)
     title = Column(String, default="New Chat")
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -68,6 +69,7 @@ class ChatSession(Base):
 class Project(Base):
     __tablename__ = "projects"
     id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, index=True, nullable=True)
     title = Column(String)
     description = Column(String, nullable=True)
     instructions = Column(String, nullable=True)

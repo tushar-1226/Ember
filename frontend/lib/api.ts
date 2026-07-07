@@ -7,16 +7,29 @@
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "http://localhost:8080";
 
+async function getAuthToken(): Promise<string | null> {
+  // TODO: Retrieve token from NextAuth session
+  return null;
+}
+
 async function getJSON<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, { cache: "no-store" });
+  const token = await getAuthToken();
+  const headers: HeadersInit = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const res = await fetch(`${API_BASE}${path}`, { headers, cache: "no-store" });
   if (!res.ok) throw new Error(`GET ${path} failed: ${res.status}`);
   return res.json() as Promise<T>;
 }
 
 async function postJSON<T>(path: string, body: unknown): Promise<T> {
+  const token = await getAuthToken();
+  const headers: HeadersInit = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
   const res = await fetch(`${API_BASE}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`POST ${path} failed: ${res.status}`);
@@ -84,7 +97,10 @@ export const getMemoryStats = () => getJSON<MemoryStats>("/memory/stats");
 export const getMemoryGraph = () => getJSON<any>("/memory/graph");
 export const getMemoryFacts = () => getJSON<any[]>("/memory/facts");
 export async function deleteMemoryFact(id: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/memory/facts/${id}`, { method: "DELETE" });
+  const token = await getAuthToken();
+  const headers: HeadersInit = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const res = await fetch(`${API_BASE}/memory/facts/${id}`, { method: "DELETE", headers });
   if (!res.ok) throw new Error(`delete memory fact failed: ${res.status}`);
 }
 
@@ -139,7 +155,10 @@ export const getChatHistory = (id: string) =>
   getJSON<ChatMessage[]>(`/chats/${id}`);
 
 export async function deleteChat(id: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/chats/${id}`, { method: "DELETE" });
+  const token = await getAuthToken();
+  const headers: HeadersInit = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const res = await fetch(`${API_BASE}/chats/${id}`, { method: "DELETE", headers });
   if (!res.ok) throw new Error(`delete chat failed: ${res.status}`);
 }
 
@@ -148,9 +167,12 @@ export async function exportChatPdf(
   title: string,
   messages: { role: string; content: string }[]
 ): Promise<Blob> {
+  const token = await getAuthToken();
+  const headers: HeadersInit = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
   const res = await fetch(`${API_BASE}/export/pdf`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify({ title, messages }),
   });
   if (!res.ok) throw new Error(`pdf export failed: ${res.status}`);
@@ -166,7 +188,10 @@ export const createProject = (title: string, description: string = "") =>
   postJSON<{ id: string; title: string; description: string }>("/projects", { title, description });
 
 export async function deleteProject(id: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/projects/${id}`, { method: "DELETE" });
+  const token = await getAuthToken();
+  const headers: HeadersInit = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const res = await fetch(`${API_BASE}/projects/${id}`, { method: "DELETE", headers });
   if (!res.ok) throw new Error(`delete project failed: ${res.status}`);
 }
 
@@ -188,7 +213,10 @@ export async function uploadFile(
   const form = new FormData();
   form.append("file", file);
   form.append("session_id", sessionId);
-  const res = await fetch(`${API_BASE}/upload`, { method: "POST", body: form });
+  const token = await getAuthToken();
+  const headers: HeadersInit = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const res = await fetch(`${API_BASE}/upload`, { method: "POST", headers, body: form });
   if (!res.ok) throw new Error(`upload failed: ${res.status}`);
   return res.json() as Promise<UploadedAttachment>;
 }
@@ -261,9 +289,12 @@ export async function streamChat(
   onEvent: (e: ChatStreamEvent) => void,
   signal?: AbortSignal
 ): Promise<void> {
+  const token = await getAuthToken();
+  const headers: HeadersInit = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
   const res = await fetch(`${API_BASE}/chat/stream`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify({ model_key: "glm", ...params }),
     signal,
   });

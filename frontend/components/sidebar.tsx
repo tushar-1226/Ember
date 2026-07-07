@@ -69,6 +69,8 @@ export function Sidebar({
 
   const pathname = usePathname();
   const [open, setOpen] = useState(false); // mobile drawer
+  // TODO: Replace with NextAuth useSession
+  const user = { firstName: "U", fullName: "User", imageUrl: "" };
 
   const content = (
     <div className="flex h-full w-64 flex-col border-r border-border-soft bg-surface/95 backdrop-blur-xl">
@@ -197,26 +199,36 @@ export function Sidebar({
         )}
       </div>
 
-      {/* User footer — opens Settings */}
-      <div className="border-t border-border-soft px-3 py-3">
+      {/* User footer — opens Settings & User Profile */}
+      <div className="flex items-center justify-between border-t border-border-soft px-3 py-3">
         <Link
           href="/settings"
           onClick={() => setOpen(false)}
-          className="flex items-center gap-2.5 rounded-lg px-1.5 py-1.5 transition-colors hover:bg-raised/60"
+          className="flex flex-1 items-center gap-2.5 rounded-lg px-1.5 py-1.5 transition-colors hover:bg-raised/60"
           title="Settings"
         >
-          <span className="grid h-7 w-7 place-items-center rounded-full bg-raised text-xs font-semibold text-foreground">
-            T
+          <span className="grid h-7 w-7 place-items-center rounded-full bg-raised text-xs font-semibold text-foreground overflow-hidden">
+            {user?.imageUrl ? <img src={user.imageUrl} alt="Avatar" className="h-full w-full object-cover" /> : user?.firstName?.[0] || "U"}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[13px] font-medium text-foreground">Tushar</p>
+            <p className="truncate text-[13px] font-medium text-foreground">{user?.fullName || "User"}</p>
             <p className="text-[11px] text-faint">Ember · private</p>
           </div>
           <svg viewBox="0 0 24 24" fill="none" width="16" height="16" className="shrink-0 text-faint">
-            <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.7" />
-            <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 6 19.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 15H2.9a2 2 0 1 1 0-4H3a1.7 1.7 0 0 0 1.6-2.9l-.1-.1A2 2 0 1 1 7.3 5.2l.1.1A1.7 1.7 0 0 0 9 5.6V5.5a2 2 0 1 1 4 0v.1A1.7 1.7 0 0 0 15 6.6l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.7 1.7 0 0 0 18.4 12v.1c0 .7.4 1.3 1 1.6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+            <line x1="21" x2="14" y1="4" y2="4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            <line x1="10" x2="3" y1="4" y2="4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            <line x1="21" x2="12" y1="12" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            <line x1="8" x2="3" y1="12" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            <line x1="21" x2="16" y1="20" y2="20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            <line x1="12" x2="3" y1="20" y2="20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            <line x1="14" x2="14" y1="2" y2="6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            <line x1="8" x2="8" y1="10" y2="14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            <line x1="16" x2="16" y1="18" y2="22" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
           </svg>
         </Link>
+        <div className="pl-2">
+          {/* TODO: Add NextAuth SignOut button */}
+        </div>
       </div>
     </div>
   );

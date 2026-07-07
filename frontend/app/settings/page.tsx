@@ -41,77 +41,84 @@ function fmtTokens(n: number): string {
 type IconProps = { className?: string };
 const Icon = {
   general: (p: IconProps) => (
-    <svg viewBox="0 0 24 24" fill="none" width="18" height="18" className={p.className}>
-      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.7" />
-      <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 6 19.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 15H2.9a2 2 0 1 1 0-4H3a1.7 1.7 0 0 0 1.6-2.9l-.1-.1A2 2 0 1 1 7.3 5.2l.1.1A1.7 1.7 0 0 0 9 5.6V5.5a2 2 0 1 1 4 0v.1A1.7 1.7 0 0 0 15 6.6l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.7 1.7 0 0 0 18.4 12v.1c0 .7.4 1.3 1 1.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    <svg viewBox="0 0 24 24" fill="none" width="22" height="22" className={p.className}>
+      <line x1="21" x2="14" y1="4" y2="4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <line x1="10" x2="3" y1="4" y2="4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <line x1="21" x2="12" y1="12" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <line x1="8" x2="3" y1="12" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <line x1="21" x2="16" y1="20" y2="20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <line x1="12" x2="3" y1="20" y2="20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <line x1="14" x2="14" y1="2" y2="6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <line x1="8" x2="8" y1="10" y2="14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <line x1="16" x2="16" y1="18" y2="22" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   ),
   account: (p: IconProps) => (
-    <svg viewBox="0 0 24 24" fill="none" width="18" height="18" className={p.className}>
-      <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="1.7" />
-      <path d="M4 20a8 8 0 0 1 16 0" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    <svg viewBox="0 0 24 24" fill="none" width="22" height="22" className={p.className}>
+      <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="2" />
+      <path d="M4 20a8 8 0 0 1 16 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   ),
   privacy: (p: IconProps) => (
-    <svg viewBox="0 0 24 24" fill="none" width="18" height="18" className={p.className}>
-      <path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+    <svg viewBox="0 0 24 24" fill="none" width="22" height="22" className={p.className}>
+      <path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
     </svg>
   ),
   billing: (p: IconProps) => (
-    <svg viewBox="0 0 24 24" fill="none" width="18" height="18" className={p.className}>
-      <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="1.6" />
-      <path d="M3 10h18" stroke="currentColor" strokeWidth="1.6" />
+    <svg viewBox="0 0 24 24" fill="none" width="22" height="22" className={p.className}>
+      <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="2" />
+      <path d="M3 10h18" stroke="currentColor" strokeWidth="2" />
     </svg>
   ),
   usage: (p: IconProps) => (
-    <svg viewBox="0 0 24 24" fill="none" width="18" height="18" className={p.className}>
-      <path d="M4 20V10M10 20V4M16 20v-6M22 20H2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    <svg viewBox="0 0 24 24" fill="none" width="22" height="22" className={p.className}>
+      <path d="M4 20V10M10 20V4M16 20v-6M22 20H2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   ),
   capabilities: (p: IconProps) => (
-    <svg viewBox="0 0 24 24" fill="none" width="18" height="18" className={p.className}>
-      <rect x="4" y="4" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.6" />
-      <rect x="13" y="4" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.6" />
-      <rect x="4" y="13" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.6" />
-      <rect x="13" y="13" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.6" />
+    <svg viewBox="0 0 24 24" fill="none" width="22" height="22" className={p.className}>
+      <rect x="4" y="4" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2" />
+      <rect x="13" y="4" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2" />
+      <rect x="4" y="13" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2" />
+      <rect x="13" y="13" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2" />
     </svg>
   ),
   connectors: (p: IconProps) => (
-    <svg viewBox="0 0 24 24" fill="none" width="18" height="18" className={p.className}>
-      <path d="M9 7V4M15 7V4M7 7h10v4a5 5 0 0 1-10 0zM12 16v4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    <svg viewBox="0 0 24 24" fill="none" width="22" height="22" className={p.className}>
+      <path d="M9 7V4M15 7V4M7 7h10v4a5 5 0 0 1-10 0zM12 16v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   ),
   close: (p: IconProps) => (
-    <svg viewBox="0 0 24 24" fill="none" width="18" height="18" className={p.className}>
-      <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    <svg viewBox="0 0 24 24" fill="none" width="22" height="22" className={p.className}>
+      <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
     </svg>
   ),
   back: (p: IconProps) => (
-    <svg viewBox="0 0 24 24" fill="none" width="20" height="20" className={p.className}>
-      <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <svg viewBox="0 0 24 24" fill="none" width="22" height="22" className={p.className}>
+      <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   ),
   search: (p: IconProps) => (
-    <svg viewBox="0 0 24 24" fill="none" width="16" height="16" className={p.className}>
-      <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.7" />
-      <path d="M20 20l-3-3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    <svg viewBox="0 0 24 24" fill="none" width="20" height="20" className={p.className}>
+      <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
+      <path d="M20 20l-3-3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   ),
   monitor: (p: IconProps) => (
-    <svg viewBox="0 0 24 24" fill="none" width="16" height="16" className={p.className}>
-      <rect x="3" y="4" width="18" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.6" />
-      <path d="M9 20h6M12 16v4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    <svg viewBox="0 0 24 24" fill="none" width="20" height="20" className={p.className}>
+      <rect x="3" y="4" width="18" height="12" rx="1.5" stroke="currentColor" strokeWidth="2" />
+      <path d="M9 20h6M12 16v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   ),
   sun: (p: IconProps) => (
-    <svg viewBox="0 0 24 24" fill="none" width="16" height="16" className={p.className}>
-      <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.6" />
-      <path d="M12 2v2M12 20v2M4 12H2M22 12h-2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    <svg viewBox="0 0 24 24" fill="none" width="20" height="20" className={p.className}>
+      <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="2" />
+      <path d="M12 2v2M12 20v2M4 12H2M22 12h-2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   ),
   moon: (p: IconProps) => (
-    <svg viewBox="0 0 24 24" fill="none" width="16" height="16" className={p.className}>
-      <path d="M20 14a8 8 0 1 1-10-10 6.5 6.5 0 0 0 10 10z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+    <svg viewBox="0 0 24 24" fill="none" width="20" height="20" className={p.className}>
+      <path d="M20 14a8 8 0 1 1-10-10 6.5 6.5 0 0 0 10 10z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
     </svg>
   ),
 };

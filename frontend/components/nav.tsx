@@ -15,6 +15,7 @@ const LINKS = [
 export function Nav() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const isSignedIn = false; // TODO: Replace with NextAuth useSession
 
   // App surfaces have their own chrome — hide the marketing nav there.
   if (
@@ -76,14 +77,26 @@ export function Nav() {
         </nav>
 
         {/* Right side — CTA (desktop) + hamburger (mobile) */}
-        <div className="flex items-center gap-2">
-          <Link
-            href="/reflect"
-            data-cursor="hot"
-            className="hidden rounded-full bg-foreground px-5 py-2.5 text-base font-medium text-void transition-transform hover:scale-[1.03] sm:inline-block"
-          >
-            Begin
-          </Link>
+        <div className="flex items-center gap-4">
+          {isSignedIn ? (
+            <>
+              <Link
+                href="/reflect"
+                data-cursor="hot"
+                className="hidden rounded-full bg-foreground px-5 py-2.5 text-base font-medium text-void transition-transform hover:scale-[1.03] sm:inline-block"
+              >
+                Enter App
+              </Link>
+              <UserButton afterSignOutUrl="/" />
+            </>
+          ) : (
+              <Link
+                href="/login"
+                className="hidden rounded-full bg-ember-amber px-5 py-2.5 text-base font-medium text-void transition-transform hover:scale-[1.03] sm:inline-block shadow-[0_0_15px_rgba(255,183,77,0.3)]"
+              >
+                Light up your Ember
+              </Link>
+          )}
 
           {/* Mobile menu toggle */}
           <button
@@ -128,13 +141,23 @@ export function Nav() {
                 </Link>
               );
             })}
-            <Link
-              href="/reflect"
-              onClick={() => setOpen(false)}
-              className="mt-1 block rounded-xl bg-foreground px-4 py-3 text-center text-sm font-medium text-void"
-            >
-              Begin
-            </Link>
+            {isSignedIn ? (
+              <Link
+                href="/reflect"
+                onClick={() => setOpen(false)}
+                className="mt-1 block rounded-xl bg-ember-amber px-4 py-3 text-center text-sm font-medium text-void shadow-[0_0_15px_rgba(255,183,77,0.3)]"
+              >
+                Enter App
+              </Link>
+            ) : (
+                <Link 
+                  href="/login"
+                  onClick={() => setOpen(false)}
+                  className="mt-2 block w-full rounded-xl bg-ember-amber px-4 py-3 text-center text-sm font-medium text-void shadow-[0_0_15px_rgba(255,183,77,0.3)]"
+                >
+                  Light up your Ember
+                </Link>
+            )}
           </motion.nav>
         )}
       </AnimatePresence>
