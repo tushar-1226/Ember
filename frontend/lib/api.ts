@@ -289,6 +289,7 @@ export async function streamChat(
     model_key?: ModelKey;
     temporary?: boolean;
     project_id?: string;
+    enable_web_search?: boolean;
   },
   onEvent: (e: ChatStreamEvent) => void,
   signal?: AbortSignal

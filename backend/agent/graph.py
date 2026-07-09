@@ -194,7 +194,9 @@ def call_model(state: State, config: RunnableConfig):
     messages = [system_msg] + state["messages"]
 
     # Bind the tools to the LLM so it knows they are available
-    llm_with_tools = llm.bind_tools(tools)
+    enable_web_search = config.get("configurable", {}).get("enable_web_search", True)
+    active_tools = tools if enable_web_search else [t for t in tools if t.name not in ["google_search", "scrape_url"]]
+    llm_with_tools = llm.bind_tools(active_tools)
 
     try:
         response = llm_with_tools.invoke(messages)
@@ -203,7 +205,7 @@ def call_model(state: State, config: RunnableConfig):
         # to the reliable default so the user still gets a reply.
         print(f"⚠️  Model '{model_key}' failed ({e}); falling back to '{DEFAULT_MODEL_KEY}'.")
         fallback = _gm(DEFAULT_MODEL_KEY)
-        response = _build_llm(fallback).bind_tools(tools).invoke(messages)
+        response = _build_llm(fallback).bind_tools(active_tools).invoke(messages)
     return {"messages": [response]}
 
 def should_continue(state: State):

@@ -79,6 +79,7 @@ export default function ReflectPage() {
   const [uploading, setUploading] = useState(false);
   const [temporary, setTemporary] = useState(false);
   const [customizeOpen, setCustomizeOpen] = useState(false);
+  const [webSearchEnabled, setWebSearchEnabled] = useState(true);
   // Start with the 10pm line so server and first client render match, then
   // switch to the real hour after mount to avoid a hydration mismatch.
   const [prompt, setPrompt] = useState(HOURLY_PROMPTS[22]);
@@ -243,7 +244,7 @@ export default function ReflectPage() {
 
     try {
       await streamChat(
-        { message: text || "Please look at the attached file.", thread_id: threadId, model_key: model, temporary },
+        { message: text || "Please look at the attached file.", thread_id: threadId, model_key: model, temporary, enable_web_search: webSearchEnabled },
         (e) => {
           if ("text" in e) {
             setMessages((m) => {
@@ -480,6 +481,18 @@ export default function ReflectPage() {
                   className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border-soft bg-surface/60 text-muted transition-colors hover:border-ember-amber/40 hover:text-foreground"
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => setWebSearchEnabled(!webSearchEnabled)}
+                  className={`grid h-9 w-9 shrink-0 place-items-center rounded-full border transition-colors ${webSearchEnabled ? 'border-ember-amber/40 bg-ember-amber/10 text-ember-amber hover:bg-ember-amber/20' : 'border-border-soft bg-surface/60 text-muted hover:border-ember-amber/40 hover:text-foreground'}`}
+                  title={webSearchEnabled ? "Web Search enabled" : "Web Search disabled"}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="2" y1="12" x2="22" y2="12"></line>
+                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                  </svg>
                 </button>
                 <ModelPicker models={models} value={model} onChange={setModel} />
                 <span className="hidden truncate font-mono text-[11px] text-faint sm:inline">

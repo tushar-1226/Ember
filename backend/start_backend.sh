@@ -15,7 +15,7 @@ POSTGRES_DB=${POSTGRES_DB:-memoryagent}
 
 echo "Starting Docker containers..."
 sudo docker rm -f memoryagent_postgres memoryagent_redis 2>/dev/null || true
-sudo docker run -d --name memoryagent_postgres -p 5432:5432 -e POSTGRES_USER=$POSTGRES_USER -e POSTGRES_PASSWORD=$POSTGRES_PASSWORD -e POSTGRES_DB=$POSTGRES_DB -v postgres_data:/var/lib/postgresql/data pgvector/pgvector:pg16
+sudo docker run -d --name memoryagent_postgres -p 5433:5432 -e POSTGRES_USER=$POSTGRES_USER -e POSTGRES_PASSWORD=$POSTGRES_PASSWORD -e POSTGRES_DB=$POSTGRES_DB -v postgres_data:/var/lib/postgresql/data pgvector/pgvector:pg16
 sudo docker run -d --name memoryagent_redis -p 6379:6379 redis:alpine
 
 echo "Waiting for PostgreSQL and Redis to start..."

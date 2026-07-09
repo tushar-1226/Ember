@@ -24,6 +24,7 @@ export default function ProjectDetailView({ params }: { params: Promise<{ id: st
   const [model, setModel] = useState<ModelKey>("nemotron");
   const [isRecording, setIsRecording] = useState(false);
   const [chatToDelete, setChatToDelete] = useState<string | null>(null);
+  const [webSearchEnabled, setWebSearchEnabled] = useState(true);
 
   const toggleRecording = () => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -54,14 +55,14 @@ export default function ProjectDetailView({ params }: { params: Promise<{ id: st
   }, [projectId]);
 
   useEffect(() => {
-    if (activeThreadId) {
+    if (activeThreadId && !streaming) {
       getChatHistory(activeThreadId).then((history) => {
         setMessages(history.filter(m => m.role === "user" || m.role === "assistant") as any);
       }).catch(console.error);
-    } else {
+    } else if (!activeThreadId) {
       setMessages([]);
     }
-  }, [activeThreadId]);
+  }, [activeThreadId, streaming]);
 
   const handleSend = async () => {
     if (!value.trim() || streaming) return;
@@ -80,13 +81,19 @@ export default function ProjectDetailView({ params }: { params: Promise<{ id: st
       setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
       await streamChat(
-        { message: msg, thread_id: threadId, project_id: projectId, model_key: model },
+        { message: msg, thread_id: threadId, project_id: projectId, model_key: model, enable_web_search: webSearchEnabled },
         (e) => {
           if ("text" in e) {
             assistantMsg += e.text;
             setMessages((prev) => {
               const next = [...prev];
               next[next.length - 1].content = assistantMsg;
+              return next;
+            });
+          } else if ("error" in e) {
+            setMessages((prev) => {
+              const next = [...prev];
+              next[next.length - 1].content = "⚠️ The AI model is currently degraded or unreachable. Please select a different model or try again.";
               return next;
             });
           }
@@ -136,6 +143,18 @@ export default function ProjectDetailView({ params }: { params: Promise<{ id: st
           </button>
         </div>
         <div className="flex items-center gap-3">
+          <button 
+            type="button"
+            onClick={() => setWebSearchEnabled(!webSearchEnabled)}
+            className={`flex items-center justify-center p-2 rounded-full transition-colors ${webSearchEnabled ? 'text-ember-amber bg-ember-amber/10 hover:bg-ember-amber/20' : 'text-muted hover:text-foreground hover:bg-surface'}`}
+            title={webSearchEnabled ? "Web Search enabled" : "Web Search disabled"}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="2" y1="12" x2="22" y2="12"></line>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+            </svg>
+          </button>
           <ModelPicker
             models={models}
             value={model}

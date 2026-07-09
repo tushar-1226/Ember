@@ -71,6 +71,7 @@ class ChatRequest(BaseModel):
     model_key: str = "nemotron"
     temporary: bool = False  # temporary chats aren't persisted or mined for memory
     project_id: Optional[str] = None
+    enable_web_search: bool = True
 
 @app.get("/models")
 async def list_models():
@@ -529,7 +530,7 @@ async def get_dashboard_analytics():
 
 @app.post("/chat/stream")
 async def chat_stream(request: Request, body: ChatRequest, user_id: str = Depends(get_current_user)):
-    config = {"configurable": {"thread_id": body.thread_id, "model_key": body.model_key}}
+    config = {"configurable": {"thread_id": body.thread_id, "model_key": body.model_key, "enable_web_search": body.enable_web_search}}
 
     # Point Ember Code's file/shell tools at this session's sandboxed workspace.
     from agent.coding_tools import set_workspace
@@ -663,6 +664,12 @@ async def chat_stream(request: Request, body: ChatRequest, user_id: str = Depend
         except Exception as e:
             import traceback
             tb = traceback.format_exc()
+            error_msg = "⚠️ The AI model is currently degraded or unreachable. Please select a different model or try again."
+            if not body.temporary:
+                with SessionLocal() as db:
+                    ast_msg = ChatMessage(id=str(uuid.uuid4()), session_id=body.thread_id, role="assistant", content=error_msg)
+                    db.add(ast_msg)
+                    db.commit()
             yield {"data": json.dumps({"error": tb})}
             yield {"data": json.dumps({"done": True})}
 
