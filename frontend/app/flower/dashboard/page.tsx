@@ -3,7 +3,18 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { getFlowerConnections, getFlowerFeed, forceSyncFlower, connectFlowerService, FlowerConnection, FlowerEvent } from "@/lib/api";
+import {
+  getFlowerConnections,
+  getFlowerFeed,
+  forceSyncFlower,
+  connectFlowerService,
+  getFlowerSettings,
+  updateFlowerSettings,
+  clearAmbientFeed,
+  API_BASE,
+  FlowerConnection,
+  FlowerEvent,
+} from "@/lib/api";
 
 function CustomSelect({ options, value, onChange }: { options: string[], value: string, onChange: (val: string) => void }) {
   const [open, setOpen] = useState(false);
@@ -168,9 +179,28 @@ function ConnectDropdown({ availableProviders, onConnect }: { availableProviders
   );
 }
 
+const DELIVERY_LABEL_TO_VALUE: Record<string, string> = {
+  "Desktop Notification": "desktop",
+  "Email Summary": "email",
+  "In-App Only": "in_app",
+};
+const DELIVERY_VALUE_TO_LABEL: Record<string, string> = {
+  desktop: "Desktop Notification",
+  email: "Email Summary",
+  in_app: "In-App Only",
+};
+
 export default function FlowerDashboardPage() {
   const [deliveryMethod, setDeliveryMethod] = useState("Desktop Notification");
   const [dataRetention, setDataRetention] = useState("Keep forever");
+
+  const [allowNotifications, setAllowNotifications] = useState(true);
+  const [morningWindow, setMorningWindow] = useState(true);
+  const [afternoonWindow, setAfternoonWindow] = useState(false);
+  const [eveningWindow, setEveningWindow] = useState(true);
+  const [savingPrefs, setSavingPrefs] = useState(false);
+  const [prefsSaved, setPrefsSaved] = useState(false);
+  const [clearingCache, setClearingCache] = useState(false);
 
   const [connections, setConnections] = useState<FlowerConnection[]>([]);
   const [feed, setFeed] = useState<FlowerEvent[]>([]);
@@ -203,6 +233,18 @@ export default function FlowerDashboardPage() {
     return () => clearInterval(interval);
   }, [fetchData]);
 
+  useEffect(() => {
+    getFlowerSettings()
+      .then((s) => {
+        setAllowNotifications(s.allow_notifications);
+        setMorningWindow(s.morning_window);
+        setAfternoonWindow(s.afternoon_window);
+        setEveningWindow(s.evening_window);
+        setDeliveryMethod(DELIVERY_VALUE_TO_LABEL[s.delivery_method] || "Desktop Notification");
+      })
+      .catch((e) => console.error("Failed to load flower settings", e));
+  }, []);
+
   const handleForceSync = async () => {
     setIsSyncing(true);
     try {
@@ -215,13 +257,56 @@ export default function FlowerDashboardPage() {
     }
   };
 
+  const handleSavePreferences = async () => {
+    setSavingPrefs(true);
+    try {
+      await updateFlowerSettings({
+        allow_notifications: allowNotifications,
+        morning_window: morningWindow,
+        afternoon_window: afternoonWindow,
+        evening_window: eveningWindow,
+        delivery_method: DELIVERY_LABEL_TO_VALUE[deliveryMethod] || "desktop",
+      });
+      setPrefsSaved(true);
+      setTimeout(() => setPrefsSaved(false), 2200);
+    } catch (e) {
+      console.error(e);
+      window.alert("Couldn't save preferences. Please try again.");
+    } finally {
+      setSavingPrefs(false);
+    }
+  };
+
+  const handleClearCache = async () => {
+    if (!window.confirm("Clear all ambient event history? This cannot be undone.")) return;
+    setClearingCache(true);
+    try {
+      await clearAmbientFeed();
+      setFeed([]);
+    } catch (e) {
+      console.error(e);
+      window.alert("Couldn't clear ambient cache. Please try again.");
+    } finally {
+      setClearingCache(false);
+    }
+  };
+
   const ALL_PROVIDERS = Object.keys(PROVIDER_INFO);
   const connectedProviders = connections.map(c => c.provider.toLowerCase());
   const availableProviders = ALL_PROVIDERS.filter(p => !connectedProviders.includes(p));
 
   const handleConnect = async (provider: string) => {
     if (provider.toLowerCase() === "spotify") {
-      window.location.href = "http://localhost:8000/auth/spotify/login";
+      // Top-level navigation can't carry an Authorization header, so the
+      // session token rides along as a query param instead.
+      const { getSession } = await import("next-auth/react");
+      const session = await getSession();
+      const token = (session as any)?.backendToken;
+      if (!token) {
+        console.error("No session token available for Spotify connect.");
+        return;
+      }
+      window.location.href = `${API_BASE}/auth/spotify/login?token=${encodeURIComponent(token)}`;
       return;
     }
     
@@ -398,9 +483,20 @@ export default function FlowerDashboardPage() {
               <div className="mb-6">
                 <div className="mb-2 flex items-center justify-between">
                   <label className="text-sm font-medium text-foreground">Allow Proactive Notifications</label>
-                  <div className="relative h-5 w-9 cursor-pointer rounded-full bg-emerald-500">
-                    <span className="absolute right-0.5 top-0.5 h-4 w-4 rounded-full bg-void shadow-sm" />
-                  </div>
+                  <button
+                    role="switch"
+                    aria-checked={allowNotifications}
+                    onClick={() => setAllowNotifications((v) => !v)}
+                    className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
+                      allowNotifications ? "bg-foreground" : "bg-raised border border-border"
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-0.5 h-4 w-4 rounded-full transition-all ${
+                        allowNotifications ? "left-[18px] bg-void" : "left-0.5 bg-muted"
+                      }`}
+                    />
+                  </button>
                 </div>
                 <p className="text-xs text-muted">Ember will reach out when it detects stress or a good moment for reflection.</p>
               </div>
@@ -408,64 +504,69 @@ export default function FlowerDashboardPage() {
               <div className="mb-6">
                 <label className="mb-3 block text-sm font-medium text-foreground">Check-in Windows</label>
                 <div className="flex flex-col gap-3">
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <div className="grid h-5 w-5 place-items-center rounded border border-emerald-500 bg-emerald-500 text-void">
-                      <svg viewBox="0 0 24 24" fill="none" width="12" height="12"><path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                    </div>
-                    <span className="text-sm text-foreground">Morning (8am - 10am)</span>
-                  </label>
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <div className="h-5 w-5 rounded border border-border-soft bg-raised"></div>
-                    <span className="text-sm text-muted">Afternoon (12pm - 2pm)</span>
-                  </label>
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <div className="grid h-5 w-5 place-items-center rounded border border-emerald-500 bg-emerald-500 text-void">
-                      <svg viewBox="0 0 24 24" fill="none" width="12" height="12"><path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                    </div>
-                    <span className="text-sm text-foreground">Evening (7pm - 9pm)</span>
-                  </label>
+                  {([
+                    ["Morning (8am - 10am)", morningWindow, setMorningWindow],
+                    ["Afternoon (12pm - 2pm)", afternoonWindow, setAfternoonWindow],
+                    ["Evening (7pm - 9pm)", eveningWindow, setEveningWindow],
+                  ] as const).map(([label, checked, setChecked]) => (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => setChecked(!checked)}
+                      className="flex items-center gap-3 text-left"
+                    >
+                      <div
+                        className={`grid h-5 w-5 shrink-0 place-items-center rounded border ${
+                          checked ? "border-foreground bg-foreground text-void" : "border-border-soft bg-raised"
+                        }`}
+                      >
+                        {checked && (
+                          <svg viewBox="0 0 24 24" fill="none" width="12" height="12"><path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        )}
+                      </div>
+                      <span className={`text-sm ${checked ? "text-foreground" : "text-muted"}`}>{label}</span>
+                    </button>
+                  ))}
                 </div>
               </div>
 
               <div className="mb-6">
                 <label className="mb-2 block text-sm font-medium text-foreground">Delivery Method</label>
-                <CustomSelect 
+                <CustomSelect
                   options={["Desktop Notification", "Email Summary", "In-App Only"]}
                   value={deliveryMethod}
                   onChange={setDeliveryMethod}
                 />
               </div>
 
-              <button className="w-full rounded-lg bg-foreground px-4 py-2.5 text-sm font-medium text-void transition-transform hover:scale-[1.02]">
-                Save Preferences
+              <button
+                onClick={handleSavePreferences}
+                disabled={savingPrefs}
+                className="w-full rounded-lg bg-foreground px-4 py-2.5 text-sm font-medium text-void transition-transform hover:scale-[1.02] disabled:opacity-70 disabled:hover:scale-100"
+              >
+                {savingPrefs ? "Saving…" : prefsSaved ? "Saved" : "Save Preferences"}
               </button>
             </div>
 
             {/* Privacy & Storage (New Panel) */}
             <div className="rounded-2xl border border-border-soft bg-surface p-6 shadow-sm">
               <h2 className="mb-6 font-display text-xl font-medium text-foreground">Privacy & Data</h2>
-              
-              <div className="mb-4">
-                <div className="mb-2 flex items-center justify-between">
-                  <label className="text-sm font-medium text-foreground">Local Storage Only</label>
-                  <div className="relative h-5 w-9 cursor-pointer rounded-full bg-emerald-500">
-                    <span className="absolute right-0.5 top-0.5 h-4 w-4 rounded-full bg-void shadow-sm" />
-                  </div>
-                </div>
-                <p className="text-xs text-muted">Ambient events are stored locally and never leave your machine.</p>
-              </div>
 
               <div className="mb-6">
                 <label className="mb-2 block text-sm font-medium text-foreground">Data Retention</label>
-                <CustomSelect 
+                <CustomSelect
                   options={["Keep forever", "Auto-delete after 30 days", "Auto-delete after 7 days"]}
                   value={dataRetention}
                   onChange={setDataRetention}
                 />
               </div>
 
-              <button className="w-full rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-2.5 text-sm font-medium text-red-500 transition-colors hover:bg-red-500/20">
-                Clear Ambient Cache
+              <button
+                onClick={handleClearCache}
+                disabled={clearingCache}
+                className="w-full rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-2.5 text-sm font-medium text-red-500 transition-colors hover:bg-red-500/20 disabled:opacity-70"
+              >
+                {clearingCache ? "Clearing…" : "Clear Ambient Cache"}
               </button>
             </div>
 

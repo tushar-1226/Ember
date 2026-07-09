@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePathname } from "next/navigation";
+import { useSession, signOut } from "next-auth/react";
 import type { ChatSummary } from "@/lib/api";
 
 /* --- Inline icons (no external icon lib) ------------------------------------ */
@@ -44,6 +45,11 @@ const I = {
       <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   ),
+  signOut: (p: IconProps) => (
+    <svg viewBox="0 0 24 24" fill="none" className={p.className} width="16" height="16">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
 };
 
 export function Sidebar({
@@ -69,8 +75,13 @@ export function Sidebar({
 
   const pathname = usePathname();
   const [open, setOpen] = useState(false); // mobile drawer
-  // TODO: Replace with NextAuth useSession
-  const user = { firstName: "U", fullName: "User", imageUrl: "" };
+  const { data: session } = useSession();
+  const email = session?.user?.email || "";
+  const user = {
+    firstName: email ? email[0].toUpperCase() : "U",
+    fullName: session?.user?.name || email || "Account",
+    imageUrl: session?.user?.image || "",
+  };
 
   const content = (
     <div className="flex h-full w-64 flex-col border-r border-border-soft bg-surface/95 backdrop-blur-xl">
@@ -227,7 +238,14 @@ export function Sidebar({
           </svg>
         </Link>
         <div className="pl-2">
-          {/* TODO: Add NextAuth SignOut button */}
+          <button
+            onClick={() => signOut({ callbackUrl: "/login" })}
+            className="grid h-8 w-8 place-items-center rounded-lg text-faint transition-colors hover:bg-raised/60 hover:text-foreground"
+            aria-label="Sign out"
+            title="Sign out"
+          >
+            <I.signOut />
+          </button>
         </div>
       </div>
     </div>

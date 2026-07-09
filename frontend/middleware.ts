@@ -1,10 +1,24 @@
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import { NextResponse } from "next/server";
+import { auth } from "@/auth";
 
-// Dummy middleware for now until NextAuth is fully configured
-export function middleware(request: NextRequest) {
-  return NextResponse.next()
-}
+// Routes that require a signed-in session. Everything else (marketing pages,
+// /login, /signup) stays public.
+const PROTECTED_PREFIXES = ["/reflect", "/projects", "/code", "/settings", "/garden", "/memory", "/flower"];
+
+export default auth((req) => {
+  const { pathname } = req.nextUrl;
+  const isProtected = PROTECTED_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  );
+
+  if (isProtected && !req.auth) {
+    const loginUrl = new URL("/login", req.nextUrl.origin);
+    loginUrl.searchParams.set("callbackUrl", pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  return NextResponse.next();
+});
 
 export const config = {
   matcher: [

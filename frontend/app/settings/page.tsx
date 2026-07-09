@@ -2,10 +2,14 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
+import { signOut, useSession } from "next-auth/react";
 import {
   getModels,
   getTokenStats,
   getUserProfile,
+  deleteAccount,
+  clearAllMemory,
+  exportUserData,
   type ModelInfo,
   type TokenStat,
   type UserProfile,
@@ -300,9 +304,24 @@ function UsageLine({
   );
 }
 
-function DangerButton({ children }: { children: ReactNode }) {
+function DangerButton({
+  children,
+  onClick,
+  disabled,
+  title,
+}: {
+  children: ReactNode;
+  onClick?: () => void;
+  disabled?: boolean;
+  title?: string;
+}) {
   return (
-    <button className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:border-muted hover:bg-raised">
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:border-muted hover:bg-raised disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border disabled:hover:bg-transparent"
+    >
       {children}
     </button>
   );
@@ -477,23 +496,39 @@ function GeneralSection() {
 }
 
 function AccountSection() {
-  const sessions = [
-    { device: "Chrome (Linux)", location: "New Delhi, Delhi, IN", created: "Jul 2, 2026, 5:10 PM", updated: "Jul 2, 2026, 5:10 PM" },
-    { device: "Chrome (Linux)", location: "Delhi, Delhi, IN", created: "Jul 2, 2026, 11:00 AM", updated: "Jul 2, 2026, 11:02 AM" },
-  ];
+  const { data: session } = useSession();
+  const [deleting, setDeleting] = useState(false);
+
+  const handleLogOut = () => signOut({ callbackUrl: "/login" });
+
+  const handleDeleteAccount = async () => {
+    if (!window.confirm("Permanently delete your account and everything Ember remembers about you? This cannot be undone.")) {
+      return;
+    }
+    setDeleting(true);
+    try {
+      await deleteAccount();
+      await signOut({ callbackUrl: "/login" });
+    } catch (e) {
+      console.error(e);
+      setDeleting(false);
+      window.alert("Couldn't delete your account. Please try again.");
+    }
+  };
+
   return (
     <div>
       <SectionTitle>Account</SectionTitle>
-      <Row label="Log out of all devices">
-        <DangerButton>Log out</DangerButton>
+      <Row label="Email">
+        <span className="text-sm text-muted">{session?.user?.email || "—"}</span>
       </Row>
-      <Row label="Delete account" hint="To delete your account, cancel any active plan first.">
-        <DangerButton>Delete account</DangerButton>
+      <Row label="Log out">
+        <DangerButton onClick={handleLogOut}>Log out</DangerButton>
       </Row>
-      <Row label="Organization ID">
-        <code className="rounded-md border border-border-soft bg-raised px-2.5 py-1 font-mono text-[12px] text-muted">
-          4e2efa5f-a1c9-4176-84c7-75ea5ed4bb11
-        </code>
+      <Row label="Delete account" hint="Permanently deletes your account and everything Ember remembers about you.">
+        <DangerButton onClick={handleDeleteAccount} disabled={deleting}>
+          {deleting ? "Deleting…" : "Delete account"}
+        </DangerButton>
       </Row>
 
       <div className="h-10" />
@@ -501,31 +536,6 @@ function AccountSection() {
       <p className="-mt-2 mb-4 text-[13px] text-muted">Devices that can control your local machine through remote sessions.</p>
       <div className="rounded-xl border border-border-soft bg-surface p-8 text-center text-[13px] text-faint">
         No trusted devices.
-      </div>
-
-      <div className="h-10" />
-      <SectionTitle>Active sessions</SectionTitle>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[520px] text-left text-[13px]">
-          <thead>
-            <tr className="border-b border-border-soft text-faint">
-              <th className="py-2 pr-4 font-medium">Device</th>
-              <th className="py-2 pr-4 font-medium">Location</th>
-              <th className="py-2 pr-4 font-medium">Created</th>
-              <th className="py-2 font-medium">Updated</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sessions.map((s, i) => (
-              <tr key={i} className="border-b border-border-soft last:border-b-0">
-                <td className="py-3 pr-4 text-foreground">{s.device}</td>
-                <td className="py-3 pr-4 text-muted">{s.location}</td>
-                <td className="py-3 pr-4 text-muted tabular-nums">{s.created}</td>
-                <td className="py-3 text-muted tabular-nums">{s.updated}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
       </div>
     </div>
   );
@@ -647,6 +657,43 @@ function UsageSection() {
 }
 
 function PrivacySection() {
+  const [exporting, setExporting] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const [cleared, setCleared] = useState(false);
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const blob = await exportUserData();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "ember-data-export.json";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error(e);
+      window.alert("Couldn't export your data. Please try again.");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleClearMemory = async () => {
+    if (!window.confirm("Permanently forget every stored memory? This cannot be undone.")) return;
+    setClearing(true);
+    try {
+      await clearAllMemory();
+      setCleared(true);
+      setTimeout(() => setCleared(false), 2200);
+    } catch (e) {
+      console.error(e);
+      window.alert("Couldn't clear memory. Please try again.");
+    } finally {
+      setClearing(false);
+    }
+  };
+
   return (
     <div>
       <SectionTitle>Privacy</SectionTitle>
@@ -660,10 +707,14 @@ function PrivacySection() {
         <Toggle />
       </Row>
       <Row label="Export your data" hint="Download everything Ember remembers as a file.">
-        <DangerButton>Export</DangerButton>
+        <DangerButton onClick={handleExport} disabled={exporting}>
+          {exporting ? "Exporting…" : "Export"}
+        </DangerButton>
       </Row>
-      <Row label="Clear all memory" hint="Permanently forget every stored memory. This cannot be undone.">
-        <DangerButton>Clear memory</DangerButton>
+      <Row label="Clear all memory" hint={cleared ? "Cleared." : "Permanently forget every stored memory. This cannot be undone."}>
+        <DangerButton onClick={handleClearMemory} disabled={clearing}>
+          {clearing ? "Clearing…" : "Clear memory"}
+        </DangerButton>
       </Row>
     </div>
   );
@@ -681,7 +732,11 @@ function BillingSection() {
           </div>
           <p className="mt-1 text-[13px] text-muted">Renews Jul 20, 2026</p>
         </div>
-        <button className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-raised">
+        <button
+          disabled
+          title="Coming soon"
+          className="cursor-not-allowed rounded-lg border border-border-soft px-4 py-2 text-sm font-medium text-faint"
+        >
           Manage plan
         </button>
       </div>
@@ -689,7 +744,11 @@ function BillingSection() {
       <div className="h-8" />
       <SectionTitle>Payment method</SectionTitle>
       <Row label="Card on file" hint="No card added yet.">
-        <button className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-raised">
+        <button
+          disabled
+          title="Coming soon"
+          className="cursor-not-allowed rounded-lg border border-border-soft px-4 py-2 text-sm font-medium text-faint"
+        >
           Add card
         </button>
       </Row>
@@ -730,9 +789,12 @@ function ConnectorsSection() {
       <p className="-mt-2 mb-5 text-[13px] text-muted">Connect Ember to the tools where your life already lives.</p>
       <div className="rounded-xl border border-border-soft bg-surface p-8 text-center">
         <p className="text-[13px] text-faint">No connectors yet.</p>
-        <button className="mt-4 rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-void transition-transform hover:scale-[1.03]">
+        <Link
+          href="/flower/dashboard"
+          className="mt-4 inline-block rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-void transition-transform hover:scale-[1.03]"
+        >
           Add connector
-        </button>
+        </Link>
       </div>
     </div>
   );

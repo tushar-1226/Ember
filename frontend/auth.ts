@@ -11,11 +11,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        // Simplified auth for demonstration. Accept any non-empty credentials.
-        if (credentials?.email && credentials?.password) {
-          return { id: "default_user", name: "Test User", email: credentials.email as string };
+        if (!credentials?.email || !credentials?.password) return null;
+
+        const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+        try {
+          const res = await fetch(`${apiBase}/auth/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: credentials.email, password: credentials.password }),
+          });
+          if (!res.ok) return null;
+          const user = await res.json();
+          return { id: user.id, email: user.email };
+        } catch (err) {
+          console.error("Backend login request failed:", err);
+          return null;
         }
-        return null;
       }
     })
   ],
@@ -24,9 +35,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        // Mint a standard HS256 JWT for the backend
-        const secretText = process.env.AUTH_SECRET || "default_super_secret_for_local_dev_only";
-        const secret = new TextEncoder().encode(secretText);
+        // Mint a standard HS256 JWT for the backend. Must match the backend's
+        // AUTH_SECRET exactly — no insecure fallback here; if it's unset, fail loudly
+        // instead of silently signing tokens the backend will also happily accept.
+        if (!process.env.AUTH_SECRET) {
+          throw new Error("AUTH_SECRET is not set — cannot mint a backend session token.");
+        }
+        const secret = new TextEncoder().encode(process.env.AUTH_SECRET);
         token.backendToken = await new SignJWT({ sub: user.id })
           .setProtectedHeader({ alg: "HS256" })
           .setIssuedAt()

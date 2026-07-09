@@ -15,10 +15,19 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 # Models
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(String, primary_key=True, index=True)
+    email = Column(String, unique=True, index=True, nullable=False)
+    password_hash = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
 class SemanticFact(Base):
     __tablename__ = "semantic_facts"
 
     id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, index=True, nullable=True)
     timestamp = Column(DateTime, default=datetime.utcnow)
     confidence = Column(Float)
     fact = Column(String)
@@ -32,6 +41,7 @@ class ProceduralWorkflow(Base):
     __tablename__ = "procedural_workflows"
 
     id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, index=True, nullable=True)
     timestamp = Column(DateTime, default=datetime.utcnow)
     confidence = Column(Float)
     name = Column(String)
@@ -43,6 +53,7 @@ class TokenUsage(Base):
     __tablename__ = "token_usage"
 
     id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, index=True, nullable=True)
     timestamp = Column(DateTime, default=datetime.utcnow)
     model_key = Column(String, index=True)
     tokens_in = Column(Float)
@@ -87,6 +98,7 @@ class ChatMessage(Base):
 class UploadedFile(Base):
     __tablename__ = "uploaded_files"
     id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, index=True, nullable=True)
     session_id = Column(String, index=True)
     filename = Column(String)
     file_type = Column(String)
@@ -97,6 +109,7 @@ class MemoryEmbedding(Base):
     """Vector embeddings for semantic/procedural memories, enabling similarity search."""
     __tablename__ = "memory_embeddings"
     id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, index=True, nullable=True)
     memory_type = Column(String, index=True)  # "semantic" or "procedural"
     memory_id = Column(String, index=True)     # FK to semantic_facts or procedural_workflows
     content = Column(Text)                     # The text that was embedded
@@ -107,6 +120,7 @@ class DocumentChunk(Base):
     """Chunked document segments with vector embeddings for RAG retrieval."""
     __tablename__ = "document_chunks"
     id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, index=True, nullable=True)
     file_id = Column(String, index=True)
     session_id = Column(String, index=True)
     chunk_index = Column(Integer)
@@ -125,6 +139,7 @@ class Resurfacing(Base):
     """
     __tablename__ = "resurfacing_events"
     id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, index=True, nullable=True)
     memory_id = Column(String, index=True)     # FK to the source memory
     memory_type = Column(String)               # "semantic" | "procedural"
     message = Column(Text)                      # the crafted nudge shown to the user
@@ -137,6 +152,7 @@ class Resurfacing(Base):
 class UserConnection(Base):
     __tablename__ = "user_connections"
     id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, index=True, nullable=True)
     provider = Column(String, index=True)
     access_token = Column(String)
     refresh_token = Column(String)
@@ -146,6 +162,7 @@ class UserConnection(Base):
 class AmbientEvent(Base):
     __tablename__ = "ambient_events"
     id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, index=True, nullable=True)
     provider = Column(String, index=True)
     event_summary = Column(String)
     timestamp = Column(DateTime, default=datetime.utcnow, index=True)
@@ -153,6 +170,7 @@ class AmbientEvent(Base):
 class FlowerSettings(Base):
     __tablename__ = "flower_settings"
     id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, index=True, nullable=True)
     allow_notifications = Column(Boolean, default=True)
     morning_window = Column(Boolean, default=True)
     afternoon_window = Column(Boolean, default=False)

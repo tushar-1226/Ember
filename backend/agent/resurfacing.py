@@ -26,15 +26,18 @@ from database import (
     SessionLocal,
     SemanticFact,
     ChatMessage,
+    ChatSession,
     Resurfacing,
     redis_client,
 )
 from agent.memory import MemoryStore
 
 # --- Tunables ---------------------------------------------------------------
-# At most one proactive nudge per this window (Redis gate). ~20h ≈ once a day
-# without pinning to a fixed clock time.
-GATE_KEY = "resurfacing:last_shown"
+# At most one proactive nudge per this window (Redis gate), per user. ~20h ≈
+# once a day without pinning to a fixed clock time.
+def _gate_key(user_id: str) -> str:
+    return f"resurfacing:last_shown:{user_id}"
+
 GATE_SECONDS = int(os.getenv("RESURFACING_GATE_SECONDS", str(20 * 3600)))
 
 # Don't resurface the *same* memory again within this many days.
@@ -127,12 +130,13 @@ def _freshness_gate(age_days: float) -> float:
     return 1.0
 
 
-def _recent_context(limit: int = 12) -> str:
+def _recent_context(user_id: str, limit: int = 12) -> str:
     """What's been on the user's mind lately — for the relevance signal."""
     with SessionLocal() as db:
         rows = (
             db.query(ChatMessage)
-            .filter(ChatMessage.role.in_(["user", "system_summary"]))
+            .join(ChatSession, ChatSession.id == ChatMessage.session_id)
+            .filter(ChatMessage.role.in_(["user", "system_summary"]), ChatSession.user_id == user_id)
             .order_by(ChatMessage.timestamp.desc())
             .limit(limit)
             .all()
@@ -141,27 +145,27 @@ def _recent_context(limit: int = 12) -> str:
     return " ".join(r.content[:200] for r in reversed(rows) if r.content).strip()
 
 
-def _recently_surfaced_ids() -> set:
+def _recently_surfaced_ids(user_id: str) -> set:
     cutoff = datetime.utcnow() - timedelta(days=REPEAT_COOLDOWN_DAYS)
     with SessionLocal() as db:
         rows = (
             db.query(Resurfacing.memory_id)
-            .filter(Resurfacing.created_at >= cutoff)
+            .filter(Resurfacing.created_at >= cutoff, Resurfacing.user_id == user_id)
             .all()
         )
     return {r[0] for r in rows}
 
 
-def _score_candidates(context: str, now: datetime) -> List[Dict[str, Any]]:
-    """Score every eligible semantic memory; return sorted best-first."""
-    skip_ids = _recently_surfaced_ids()
+def _score_candidates(context: str, now: datetime, user_id: str) -> List[Dict[str, Any]]:
+    """Score every eligible semantic memory owned by this user; return sorted best-first."""
+    skip_ids = _recently_surfaced_ids(user_id)
 
     # Relevance via existing pgvector path: rank of the memory in a similarity
     # search over recent context. Degrades gracefully if the embedder is down.
     relevance_by_id: Dict[str, float] = {}
     if context:
         try:
-            hits = MemoryStore.search_memories(context, top_k=20)
+            hits = MemoryStore.search_memories(context, user_id=user_id, top_k=20)
             for rank, h in enumerate(hits):
                 # 1.0 for the closest match, easing down to ~0.5.
                 relevance_by_id[h["memory_id"]] = 1.0 - 0.5 * (rank / max(1, len(hits)))
@@ -172,7 +176,10 @@ def _score_candidates(context: str, now: datetime) -> List[Dict[str, Any]]:
     with SessionLocal() as db:
         facts = (
             db.query(SemanticFact)
-            .filter((SemanticFact.confidence == None) | (SemanticFact.confidence >= MIN_CONFIDENCE))  # noqa: E711
+            .filter(
+                (SemanticFact.confidence == None) | (SemanticFact.confidence >= MIN_CONFIDENCE),  # noqa: E711
+                SemanticFact.user_id == user_id,
+            )
             .all()
         )
         for f in facts:
@@ -250,18 +257,19 @@ async def _craft_message(fact: str, category: Optional[str], now: datetime, cont
         return fallback
 
 
-async def generate_resurfacing(force: bool = False) -> Optional[Dict[str, Any]]:
+async def generate_resurfacing(user_id: str, force: bool = False) -> Optional[Dict[str, Any]]:
     """
-    Produce (and persist) the next proactive nudge, or None if nothing fits or the
-    frequency gate is closed. `force=True` bypasses the gate (for testing / manual).
+    Produce (and persist) the next proactive nudge for this user, or None if
+    nothing fits or the frequency gate is closed. `force=True` bypasses the gate
+    (for testing / manual).
     """
     now = datetime.utcnow()
 
-    if not force and redis_client.get(GATE_KEY):
+    if not force and redis_client.get(_gate_key(user_id)):
         return None
 
-    context = _recent_context()
-    candidates = _score_candidates(context, now)
+    context = _recent_context(user_id)
+    candidates = _score_candidates(context, now, user_id)
     if not candidates or candidates[0]["score"] < MIN_SCORE:
         return None
 
@@ -271,6 +279,7 @@ async def generate_resurfacing(force: bool = False) -> Optional[Dict[str, Any]]:
 
     event = Resurfacing(
         id=str(uuid.uuid4()),
+        user_id=user_id,
         memory_id=top["memory_id"],
         memory_type=top["memory_type"],
         message=message,
@@ -283,25 +292,25 @@ async def generate_resurfacing(force: bool = False) -> Optional[Dict[str, Any]]:
         db.add(event)
         db.commit()
 
-    # Close the gate so we don't nudge again too soon.
-    redis_client.setex(GATE_KEY, GATE_SECONDS, event.id)
+    # Close the gate so we don't nudge this user again too soon.
+    redis_client.setex(_gate_key(user_id), GATE_SECONDS, event.id)
 
     return _serialize(event, signals=top["signals"])
 
 
-def get_pending() -> Optional[Dict[str, Any]]:
-    """The current un-reacted nudge, if any (stable across page loads)."""
+def get_pending(user_id: str) -> Optional[Dict[str, Any]]:
+    """The current un-reacted nudge for this user, if any (stable across page loads)."""
     with SessionLocal() as db:
         event = (
             db.query(Resurfacing)
-            .filter(Resurfacing.status == "pending")
+            .filter(Resurfacing.status == "pending", Resurfacing.user_id == user_id)
             .order_by(Resurfacing.created_at.desc())
             .first()
         )
         return _serialize(event) if event else None
 
 
-def react(event_id: str, reaction: str) -> Dict[str, Any]:
+def react(event_id: str, reaction: str, user_id: str) -> Dict[str, Any]:
     """
     Record the user's response and let it feed the strength/decay pipeline:
 
@@ -314,14 +323,18 @@ def react(event_id: str, reaction: str) -> Dict[str, Any]:
         reaction, "dismissed"
     )
     with SessionLocal() as db:
-        event = db.query(Resurfacing).filter(Resurfacing.id == event_id).first()
+        event = db.query(Resurfacing).filter(
+            Resurfacing.id == event_id, Resurfacing.user_id == user_id
+        ).first()
         if not event:
             return {"status": "not_found"}
         event.status = status
         event.reacted_at = datetime.utcnow()
 
         if event.memory_type == "semantic":
-            fact = db.query(SemanticFact).filter(SemanticFact.id == event.memory_id).first()
+            fact = db.query(SemanticFact).filter(
+                SemanticFact.id == event.memory_id, SemanticFact.user_id == user_id
+            ).first()
             if fact:
                 if reaction == "helpful":
                     fact.confidence = min(1.0, (fact.confidence or 0.5) + 0.15)

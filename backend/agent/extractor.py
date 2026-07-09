@@ -25,7 +25,7 @@ class MemoryExtractionResult(BaseModel):
     procedural_workflows: List[ProceduralExtraction] = Field(description="List of extracted procedural workflows.", default_factory=list)
     user_profile: UserProfileExtraction = Field(description="Assessment of the user's conversational profile.", default_factory=UserProfileExtraction)
 
-async def extract_memories_background(message: str):
+async def extract_memories_background(message: str, user_id: str):
     """
     Background task to extract memories from a user message and store them in the database.
     """
@@ -64,17 +64,17 @@ async def extract_memories_background(message: str):
         result = MemoryExtractionResult(**data)
         
         for fact in result.semantic_facts:
-            MemoryStore.add_semantic(fact.fact, fact.category, fact.entity)
+            MemoryStore.add_semantic(fact.fact, fact.category, fact.entity, user_id=user_id)
         for workflow in result.procedural_workflows:
-            MemoryStore.add_procedural(workflow.name, workflow.description, workflow.steps)
-            
+            MemoryStore.add_procedural(workflow.name, workflow.description, workflow.steps, user_id=user_id)
+
         # Update user profile
         from database import SessionLocal, UserProfile
         from datetime import datetime
         with SessionLocal() as db:
-            profile = db.query(UserProfile).filter(UserProfile.id == "default_user").first()
+            profile = db.query(UserProfile).filter(UserProfile.id == user_id).first()
             if not profile:
-                profile = UserProfile(id="default_user")
+                profile = UserProfile(id=user_id)
                 db.add(profile)
             
             profile.preferred_language = result.user_profile.preferred_language

@@ -16,28 +16,88 @@ async function getAuthToken(): Promise<string | null> {
   return null;
 }
 
-async function getJSON<T>(path: string): Promise<T> {
-  const token = await getAuthToken();
-  const headers: HeadersInit = {};
-  if (token) headers["Authorization"] = `Bearer ${token}`;
+/**
+ * A 401 means the session token the backend was handed is missing/expired/invalid.
+ * There's nothing a retry or a generic error message can do about that — the only
+ * correct move is to drop the (already-dead) client session and send the user back
+ * to /login, rather than surface it as "couldn't reach Ember".
+ */
+async function handleUnauthorized(): Promise<void> {
+  if (typeof window !== "undefined") {
+    const { signOut } = await import("next-auth/react");
+    await signOut({ callbackUrl: "/login" });
+  }
+}
 
-  const res = await fetch(`${API_BASE}${path}`, { headers, cache: "no-store" });
+async function authHeaders(extra?: Record<string, string>): Promise<Record<string, string>> {
+  const token = await getAuthToken();
+  const headers: Record<string, string> = { ...extra };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  return headers;
+}
+
+/** Shared fetch wrapper: attaches the bearer token and redirects to /login on 401. */
+async function authFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const headers = await authHeaders(init.headers as unknown as Record<string, string> | undefined);
+  const res = await fetch(`${API_BASE}${path}`, { ...init, headers });
+  if (res.status === 401) {
+    await handleUnauthorized();
+    throw new Error("Session expired. Please sign in again.");
+  }
+  return res;
+}
+
+async function getJSON<T>(path: string): Promise<T> {
+  const res = await authFetch(path, { cache: "no-store" });
   if (!res.ok) throw new Error(`GET ${path} failed: ${res.status}`);
   return res.json() as Promise<T>;
 }
 
 async function postJSON<T>(path: string, body: unknown): Promise<T> {
-  const token = await getAuthToken();
-  const headers: HeadersInit = { "Content-Type": "application/json" };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await authFetch(path, {
     method: "POST",
-    headers,
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`POST ${path} failed: ${res.status}`);
   return res.json() as Promise<T>;
+}
+
+// ---------------------------------------------------------------------------
+// Auth  (task: create an account / verify credentials)
+// ---------------------------------------------------------------------------
+/** Registers a new account. Throws with the backend's own message on failure
+ * (duplicate email, weak password, etc.) so the signup form can show it as-is. */
+export async function registerAccount(email: string, password: string): Promise<{ id: string; email: string }> {
+  const res = await fetch(`${API_BASE}/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.detail || "Could not create account.");
+  }
+  return res.json();
+}
+
+/** Permanently deletes the signed-in account and everything it owns. Irreversible. */
+export async function deleteAccount(): Promise<void> {
+  const res = await authFetch("/users/me", { method: "DELETE" });
+  if (!res.ok) throw new Error(`delete account failed: ${res.status}`);
+}
+
+/** Wipes every stored memory (semantic facts + procedural workflows) for this user. Irreversible. */
+export async function clearAllMemory(): Promise<void> {
+  const res = await authFetch("/memory/clear", { method: "DELETE" });
+  if (!res.ok) throw new Error(`clear memory failed: ${res.status}`);
+}
+
+/** Downloads everything Ember remembers about this user as a JSON file. */
+export async function exportUserData(): Promise<Blob> {
+  const res = await authFetch("/export/data");
+  if (!res.ok) throw new Error(`data export failed: ${res.status}`);
+  return res.blob();
 }
 
 // ---------------------------------------------------------------------------
@@ -101,10 +161,7 @@ export const getMemoryStats = () => getJSON<MemoryStats>("/memory/stats");
 export const getMemoryGraph = () => getJSON<any>("/memory/graph");
 export const getMemoryFacts = () => getJSON<any[]>("/memory/facts");
 export async function deleteMemoryFact(id: string): Promise<void> {
-  const token = await getAuthToken();
-  const headers: HeadersInit = {};
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  const res = await fetch(`${API_BASE}/memory/facts/${id}`, { method: "DELETE", headers });
+  const res = await authFetch(`/memory/facts/${id}`, { method: "DELETE" });
   if (!res.ok) throw new Error(`delete memory fact failed: ${res.status}`);
 }
 
@@ -159,10 +216,7 @@ export const getChatHistory = (id: string) =>
   getJSON<ChatMessage[]>(`/chats/${id}`);
 
 export async function deleteChat(id: string): Promise<void> {
-  const token = await getAuthToken();
-  const headers: HeadersInit = {};
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  const res = await fetch(`${API_BASE}/chats/${id}`, { method: "DELETE", headers });
+  const res = await authFetch(`/chats/${id}`, { method: "DELETE" });
   if (!res.ok) throw new Error(`delete chat failed: ${res.status}`);
 }
 
@@ -171,12 +225,9 @@ export async function exportChatPdf(
   title: string,
   messages: { role: string; content: string }[]
 ): Promise<Blob> {
-  const token = await getAuthToken();
-  const headers: HeadersInit = { "Content-Type": "application/json" };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  const res = await fetch(`${API_BASE}/export/pdf`, {
+  const res = await authFetch("/export/pdf", {
     method: "POST",
-    headers,
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ title, messages }),
   });
   if (!res.ok) throw new Error(`pdf export failed: ${res.status}`);
@@ -192,10 +243,7 @@ export const createProject = (title: string, description: string = "") =>
   postJSON<{ id: string; title: string; description: string }>("/projects", { title, description });
 
 export async function deleteProject(id: string): Promise<void> {
-  const token = await getAuthToken();
-  const headers: HeadersInit = {};
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  const res = await fetch(`${API_BASE}/projects/${id}`, { method: "DELETE", headers });
+  const res = await authFetch(`/projects/${id}`, { method: "DELETE" });
   if (!res.ok) throw new Error(`delete project failed: ${res.status}`);
 }
 
@@ -217,10 +265,7 @@ export async function uploadFile(
   const form = new FormData();
   form.append("file", file);
   form.append("session_id", sessionId);
-  const token = await getAuthToken();
-  const headers: HeadersInit = {};
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  const res = await fetch(`${API_BASE}/upload`, { method: "POST", headers, body: form });
+  const res = await authFetch("/upload", { method: "POST", body: form });
   if (!res.ok) throw new Error(`upload failed: ${res.status}`);
   return res.json() as Promise<UploadedAttachment>;
 }
@@ -294,12 +339,9 @@ export async function streamChat(
   onEvent: (e: ChatStreamEvent) => void,
   signal?: AbortSignal
 ): Promise<void> {
-  const token = await getAuthToken();
-  const headers: HeadersInit = { "Content-Type": "application/json" };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  const res = await fetch(`${API_BASE}/chat/stream`, {
+  const res = await authFetch("/chat/stream", {
     method: "POST",
-    headers,
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ model_key: "glm", ...params }),
     signal,
   });
@@ -364,3 +406,20 @@ export type NotionDashboardData = {
 };
 
 export const getNotionDashboardData = () => getJSON<NotionDashboardData>("/flower/notion/dashboard");
+
+export type FlowerSettings = {
+  allow_notifications: boolean;
+  morning_window: boolean;
+  afternoon_window: boolean;
+  evening_window: boolean;
+  delivery_method: string;
+};
+
+export const getFlowerSettings = () => getJSON<FlowerSettings>("/flower/settings");
+export const updateFlowerSettings = (settings: FlowerSettings) =>
+  postJSON<{ status: string }>("/flower/settings", settings);
+
+export async function clearAmbientFeed(): Promise<void> {
+  const res = await authFetch("/flower/feed", { method: "DELETE" });
+  if (!res.ok) throw new Error(`clear ambient feed failed: ${res.status}`);
+}

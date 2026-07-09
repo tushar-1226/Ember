@@ -102,16 +102,17 @@ class MemoryStore:
     # EMBEDDING HELPERS
     # ------------------------------------------------------------------------
     @staticmethod
-    def embed_and_store(memory_id: str, memory_type: str, content: str) -> None:
+    def embed_and_store(memory_id: str, memory_type: str, content: str, user_id: Optional[str] = None) -> None:
         """Embed a memory and store its vector in the database."""
         embedding = get_embedding(content)
         if embedding is None:
-            print(f"⚠️  Skipping embedding for {memory_type}:{memory_id} — API unavailable")
+            print(f"  Skipping embedding for {memory_type}:{memory_id} — API unavailable")
             return
 
         with SessionLocal() as db:
             emb = MemoryEmbedding(
                 id=str(uuid.uuid4()),
+                user_id=user_id,
                 memory_type=memory_type,
                 memory_id=memory_id,
                 content=content,
@@ -120,15 +121,15 @@ class MemoryStore:
             )
             db.add(emb)
             db.commit()
-            print(f"✅ Embedded {memory_type} memory: {content[:60]}...")
+            print(f" Embedded {memory_type} memory: {content[:60]}...")
 
     # ------------------------------------------------------------------------
     # SEMANTIC MEMORY (Postgres)
     # ------------------------------------------------------------------------
     @staticmethod
-    def get_semantic() -> List[Dict[str, Any]]:
+    def get_semantic(user_id: str) -> List[Dict[str, Any]]:
         with SessionLocal() as db:
-            facts = db.query(SemanticFact).all()
+            facts = db.query(SemanticFact).filter(SemanticFact.user_id == user_id).all()
             return [
                 {
                     "id": f.id,
@@ -142,14 +143,16 @@ class MemoryStore:
             ]
 
     @staticmethod
-    def add_semantic(fact: str, category: str, entity: str, confidence: float = 1.0) -> None:
+    def add_semantic(fact: str, category: str, entity: str, user_id: str, confidence: float = 1.0) -> None:
         with SessionLocal() as db:
             # Dedup: the extractor runs on every message, so the same fact
             # ("The user's name is Tushar") is re-derived constantly. If we
             # already know it, just refresh its recency and skip re-embedding.
+            # Scoped to this user so two people stating the same fact don't collide.
             existing = db.query(SemanticFact).filter(
                 func.lower(SemanticFact.fact) == fact.strip().lower(),
                 SemanticFact.entity == entity,
+                SemanticFact.user_id == user_id,
             ).first()
             if existing:
                 existing.timestamp = datetime.utcnow()
@@ -160,6 +163,7 @@ class MemoryStore:
             fact_id = str(uuid.uuid4())
             new_fact = SemanticFact(
                 id=fact_id,
+                user_id=user_id,
                 fact=fact,
                 category=category,
                 entity=entity,
@@ -170,15 +174,15 @@ class MemoryStore:
             db.commit()
 
         # Embed asynchronously (fire-and-forget in background)
-        MemoryStore.embed_and_store(fact_id, "semantic", f"{entity}: {fact} (category: {category})")
+        MemoryStore.embed_and_store(fact_id, "semantic", f"{entity}: {fact} (category: {category})", user_id=user_id)
 
     # ------------------------------------------------------------------------
     # PROCEDURAL MEMORY (Postgres)
     # ------------------------------------------------------------------------
     @staticmethod
-    def get_procedural() -> List[Dict[str, Any]]:
+    def get_procedural(user_id: str) -> List[Dict[str, Any]]:
         with SessionLocal() as db:
-            workflows = db.query(ProceduralWorkflow).all()
+            workflows = db.query(ProceduralWorkflow).filter(ProceduralWorkflow.user_id == user_id).all()
             return [
                 {
                     "id": w.id,
@@ -193,11 +197,12 @@ class MemoryStore:
             ]
 
     @staticmethod
-    def add_procedural(name: str, description: str, steps: List[str], confidence: float = 1.0) -> None:
+    def add_procedural(name: str, description: str, steps: List[str], user_id: str, confidence: float = 1.0) -> None:
         workflow_id = str(uuid.uuid4())
         with SessionLocal() as db:
             new_workflow = ProceduralWorkflow(
                 id=workflow_id,
+                user_id=user_id,
                 name=name,
                 description=description,
                 steps=steps,
@@ -210,14 +215,14 @@ class MemoryStore:
 
         # Embed the workflow
         steps_text = " → ".join(steps) if steps else ""
-        MemoryStore.embed_and_store(workflow_id, "procedural", f"{name}: {description}. Steps: {steps_text}")
+        MemoryStore.embed_and_store(workflow_id, "procedural", f"{name}: {description}. Steps: {steps_text}", user_id=user_id)
 
     # ------------------------------------------------------------------------
     # MEMORY SEARCH (Vector Similarity via pgvector)
     # ------------------------------------------------------------------------
     @staticmethod
-    def search_memories(query: str, top_k: int = 5) -> List[Dict[str, Any]]:
-        """Search memories by semantic similarity using pgvector cosine distance."""
+    def search_memories(query: str, user_id: str, top_k: int = 5) -> List[Dict[str, Any]]:
+        """Search memories by semantic similarity using pgvector cosine distance, scoped to this user."""
         query_emb = get_query_embedding(query)
         if query_emb is None:
             return []
@@ -225,7 +230,9 @@ class MemoryStore:
         results = []
         with SessionLocal() as db:
             # Use pgvector cosine distance operator <=>
-            rows = db.query(MemoryEmbedding).order_by(
+            rows = db.query(MemoryEmbedding).filter(
+                MemoryEmbedding.user_id == user_id
+            ).order_by(
                 MemoryEmbedding.embedding.cosine_distance(query_emb)
             ).limit(top_k).all()
 
@@ -256,7 +263,12 @@ class MemoryStore:
     # ------------------------------------------------------------------------
     @staticmethod
     def search_document_chunks(query: str, session_id: str, top_k: int = 5) -> List[Dict[str, Any]]:
-        """Search document chunks by semantic similarity, scoped to a session."""
+        """Search document chunks by semantic similarity, scoped to a session.
+
+        Not scoped by user_id: a session_id is only ever handed to the caller who
+        owns that chat session (verified at the route level), so this stays
+        session-scoped like the rest of the chat pipeline.
+        """
         if not query or not query.strip():
             with SessionLocal() as db:
                 rows = db.query(DocumentChunk).filter(
@@ -266,7 +278,7 @@ class MemoryStore:
                     {"file_id": r.file_id, "chunk_index": r.chunk_index, "text": r.text}
                     for r in rows
                 ]
-                
+
         query_emb = get_query_embedding(query)
         if query_emb is None:
             return []
@@ -287,11 +299,14 @@ class MemoryStore:
     # MEMORY CORRECTION
     # ------------------------------------------------------------------------
     @staticmethod
-    def correct_memory(memory_id: str, correction: str):
-        """Apply a user correction to an existing memory record."""
+    def correct_memory(memory_id: str, correction: str, user_id: str) -> bool:
+        """Apply a user correction to an existing memory record they own. Returns
+        False (no-op) if the memory doesn't exist or belongs to someone else."""
         with SessionLocal() as db:
             # Try semantic fact first
-            fact = db.query(SemanticFact).filter(SemanticFact.id == memory_id).first()
+            fact = db.query(SemanticFact).filter(
+                SemanticFact.id == memory_id, SemanticFact.user_id == user_id
+            ).first()
             if fact:
                 fact.fact = correction
                 fact.confidence = 0.9  # User-corrected confidence
@@ -302,12 +317,14 @@ class MemoryStore:
                 if emb:
                     db.delete(emb)
                     db.commit()
-                MemoryStore.embed_and_store(memory_id, "semantic", f"{fact.entity}: {correction} (category: {fact.category})")
+                MemoryStore.embed_and_store(memory_id, "semantic", f"{fact.entity}: {correction} (category: {fact.category})", user_id=user_id)
                 print(f"✅ Semantic fact {memory_id} corrected.")
-                return
+                return True
 
             # Try procedural workflow
-            workflow = db.query(ProceduralWorkflow).filter(ProceduralWorkflow.id == memory_id).first()
+            workflow = db.query(ProceduralWorkflow).filter(
+                ProceduralWorkflow.id == memory_id, ProceduralWorkflow.user_id == user_id
+            ).first()
             if workflow:
                 workflow.description = correction
                 workflow.confidence = 0.9
@@ -318,8 +335,9 @@ class MemoryStore:
                     db.delete(emb)
                     db.commit()
                 steps_text = " → ".join(workflow.steps) if workflow.steps else ""
-                MemoryStore.embed_and_store(memory_id, "procedural", f"{workflow.name}: {correction}. Steps: {steps_text}")
+                MemoryStore.embed_and_store(memory_id, "procedural", f"{workflow.name}: {correction}. Steps: {steps_text}", user_id=user_id)
                 print(f"✅ Procedural workflow {memory_id} corrected.")
-                return
+                return True
 
-            print(f"⚠️  Memory {memory_id} not found for correction.")
+            print(f"⚠️  Memory {memory_id} not found (or not owned by this user) for correction.")
+            return False

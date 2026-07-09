@@ -4,6 +4,7 @@ import { motion, useMotionValue, useTransform } from "framer-motion";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { registerAccount } from "@/lib/api";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -11,20 +12,31 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     if (password !== confirmPassword) {
-      alert("Passwords do not match");
+      setError("Passwords do not match.");
       return;
     }
-    
+
     setIsLoading(true);
-    // TODO: Implement FastAPI /auth/register then NextAuth signIn
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      await registerAccount(email, password);
+      const { signIn } = await import("next-auth/react");
+      const res = await signIn("credentials", { email, password, redirect: false });
+      if (res?.error) {
+        setError("Account created, but sign-in failed. Please try logging in.");
+        setIsLoading(false);
+        return;
+      }
       router.push("/reflect");
-    }, 1500);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not create account.");
+      setIsLoading(false);
+    }
   };
 
   const mouseX = useMotionValue(0);
@@ -43,48 +55,10 @@ export default function SignupPage() {
   const rotateY = useTransform(mouseX, [-1, 1], [-8, 8]);
 
   return (
-    <div 
+    <div
       className="relative flex min-h-screen items-center justify-center bg-background px-4 py-12 overflow-hidden"
       onMouseMove={handleMouseMove}
     >
-      {/* Deep Grid Background */}
-      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-        <div 
-          className="absolute inset-0 z-0 opacity-60"
-          style={{
-            transform: 'perspective(1000px) rotateX(60deg) scale(4) translateY(-10%)',
-            transformOrigin: 'top center',
-            maskImage: 'radial-gradient(circle at center, black, transparent 75%)',
-            WebkitMaskImage: 'radial-gradient(circle at center, black, transparent 75%)'
-          }}
-        >
-          <motion.div
-            className="absolute inset-0"
-            animate={{
-              y: [0, 64] // 4rem = 64px
-            }}
-            transition={{
-              repeat: Infinity,
-              duration: 2,
-              ease: "linear"
-            }}
-            style={{
-              top: '-50%',
-              bottom: '-50%',
-              left: '-50%',
-              right: '-50%',
-              backgroundImage: `
-                linear-gradient(to right, #333 1px, transparent 1px),
-                linear-gradient(to bottom, #333 1px, transparent 1px)
-              `,
-              backgroundSize: '4rem 4rem',
-            }}
-          />
-        </div>
-        {/* Glow behind the card */}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-ember-amber/10 rounded-full blur-[120px]" />
-      </div>
-
       <motion.div
         style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
         className="relative z-10 w-full max-w-lg perspective-1000"
@@ -93,12 +67,12 @@ export default function SignupPage() {
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
-          className="w-full rounded-[2rem] border border-border-soft bg-[#050505]/90 p-10 sm:p-14 shadow-[0_0_100px_rgba(217,160,102,0.15)] backdrop-blur-3xl"
+          className="w-full rounded-[2rem] border border-border-soft bg-surface p-10 sm:p-14"
         >
         <div className="mb-8 text-center">
           <Link href="/" className="inline-block group" data-cursor="hot">
             <span className="relative grid h-10 w-10 place-items-center">
-              <span className="absolute h-3 w-3 rounded-full bg-ember-amber shadow-[0_0_15px_rgba(255,183,77,0.5)]" />
+              <span className="absolute h-3 w-3 rounded-full bg-ember-amber" />
               <span className="absolute h-10 w-10 rounded-full border border-ember-amber/25 transition-transform group-hover:scale-110" />
             </span>
           </Link>
@@ -109,6 +83,16 @@ export default function SignupPage() {
             Start remembering what matters.
           </p>
         </div>
+
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-400 text-center"
+          >
+            {error}
+          </motion.div>
+        )}
 
         <form onSubmit={handleSignup} className="flex flex-col gap-5">
           <div className="flex flex-col gap-2">
@@ -150,23 +134,16 @@ export default function SignupPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="mt-2 group relative overflow-hidden rounded-xl bg-ember-amber px-4 py-3 text-sm font-medium text-void shadow-[0_0_15px_rgba(255,183,77,0.2)] transition-transform hover:scale-[1.02] disabled:opacity-70 disabled:hover:scale-100"
+            className="mt-2 rounded-xl bg-ember-amber px-4 py-3 text-sm font-medium text-void transition-opacity hover:opacity-90 disabled:opacity-70"
           >
             {isLoading ? (
-              <motion.span
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="flex items-center justify-center gap-2"
-              >
+              <span className="flex items-center justify-center gap-2">
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-void/30 border-t-void" />
                 Creating account...
-              </motion.span>
+              </span>
             ) : (
               <span>Sign Up</span>
             )}
-            
-            {/* Shimmer effect */}
-            <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover:opacity-100" />
           </button>
         </form>
 
