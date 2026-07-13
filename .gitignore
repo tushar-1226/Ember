@@ -37,3 +37,9 @@ Thumbs.db
 .claude/
 .deepcode/
 venv/
+
+# devenv / nix
+.devenv/
+.devenv.flake.nix
+devenv.local.nix
+.direnv/

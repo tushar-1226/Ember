@@ -138,7 +138,76 @@ const I = {
       <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   ),
+  eye: (p: { className?: string }) => (
+    <svg viewBox="0 0 24 24" fill="none" width="14" height="14" className={p.className}>
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6" />
+    </svg>
+  ),
+  copy: (p: { className?: string }) => (
+    <svg viewBox="0 0 24 24" fill="none" width="14" height="14" className={p.className}>
+      <rect x="9" y="9" width="11" height="11" rx="2" stroke="currentColor" strokeWidth="1.7" />
+      <path d="M5 15V5a2 2 0 0 1 2-2h10" stroke="currentColor" strokeWidth="1.7" />
+    </svg>
+  ),
+  download: (p: { className?: string }) => (
+    <svg viewBox="0 0 24 24" fill="none" width="14" height="14" className={p.className}>
+      <path d="M12 3v13m0 0l-4.5-4.5M12 16l4.5-4.5M4 20h16" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
+  expand: (p: { className?: string }) => (
+    <svg viewBox="0 0 24 24" fill="none" width="14" height="14" className={p.className}>
+      <path d="M9 4H4v5M15 20h5v-5M4 4l6 6M20 20l-6-6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
+  collapse: (p: { className?: string }) => (
+    <svg viewBox="0 0 24 24" fill="none" width="14" height="14" className={p.className}>
+      <path d="M4 9h5V4M20 15h-5v5M9 9L3 3M15 15l6 6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
+  check: (p: { className?: string }) => (
+    <svg viewBox="0 0 24 24" fill="none" width="14" height="14" className={p.className}>
+      <path d="M5 12l5 5L20 7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
 };
+
+type ArtifactKind = "svg" | "html" | "markdown" | "code" | "text";
+
+const ARTIFACT_META: Record<string, { label: string; kind: ArtifactKind }> = {
+  svg: { label: "Image · SVG", kind: "svg" },
+  html: { label: "Web · HTML", kind: "html" },
+  htm: { label: "Web · HTML", kind: "html" },
+  md: { label: "Document · Markdown", kind: "markdown" },
+  json: { label: "Data · JSON", kind: "code" },
+  py: { label: "Code · Python", kind: "code" },
+  js: { label: "Code · JavaScript", kind: "code" },
+  jsx: { label: "Code · JavaScript", kind: "code" },
+  ts: { label: "Code · TypeScript", kind: "code" },
+  tsx: { label: "Code · TypeScript", kind: "code" },
+  css: { label: "Code · CSS", kind: "code" },
+  sh: { label: "Code · Shell", kind: "code" },
+  yml: { label: "Data · YAML", kind: "code" },
+  yaml: { label: "Data · YAML", kind: "code" },
+  txt: { label: "Text", kind: "text" },
+};
+
+function artifactMeta(path: string): { label: string; kind: ArtifactKind } {
+  const ext = path.split(".").pop()?.toLowerCase() ?? "";
+  return ARTIFACT_META[ext] ?? { label: ext ? `${ext.toUpperCase()} file` : "File", kind: "text" };
+}
+
+const PREVIEWABLE: ArtifactKind[] = ["svg", "html", "markdown"];
+
+function downloadText(filename: string, content: string) {
+  const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 function Chip({ icon, children }: { icon: ReactNode; children: ReactNode }) {
   return (
@@ -158,6 +227,29 @@ function StepRow({ step }: { step: Step }) {
   );
 }
 
+/** Inline artifact card — like Claude's file cards in chat. Click opens the side panel. */
+function ArtifactCard({ path, onOpen, onDownload }: { path: string; onOpen: () => void; onDownload: () => void }) {
+  const { label } = artifactMeta(path);
+  const name = path.split("/").pop() || path;
+  return (
+    <div className="flex w-full max-w-sm items-center gap-3 rounded-xl border border-border-soft bg-raised/60 py-2 pl-2.5 pr-2 transition-colors hover:border-border hover:bg-raised">
+      <button onClick={onOpen} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-surface text-faint">
+        <I.file />
+      </button>
+      <button onClick={onOpen} className="min-w-0 flex-1 text-left">
+        <span className="block truncate text-[13px] font-medium text-foreground">{name}</span>
+        <span className="block text-[11px] text-faint">{label}</span>
+      </button>
+      <button
+        onClick={(e) => { e.stopPropagation(); onDownload(); }}
+        className="shrink-0 rounded-md border border-border-soft px-2.5 py-1.5 text-[12px] text-muted transition-colors hover:text-foreground"
+      >
+        Download
+      </button>
+    </div>
+  );
+}
+
 export default function EmberCodePage() {
   const [value, setValue] = useState("");
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -173,11 +265,14 @@ export default function EmberCodePage() {
   const [reasoning, setReasoning] = useState<(typeof REASONING)[number]>("High");
   const [drawer, setDrawer] = useState(false);
 
-  // Files panel
+  // Files / artifact panel
   const [filesOpen, setFilesOpen] = useState(false);
   const [files, setFiles] = useState<WorkspaceEntry[]>([]);
   const [activeFile, setActiveFile] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState("");
+  const [panelTab, setPanelTab] = useState<"preview" | "code">("code");
+  const [panelExpanded, setPanelExpanded] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -199,9 +294,28 @@ export default function EmberCodePage() {
   function openFile(path: string) {
     setActiveFile(path);
     setFileContent("Loading…");
+    setPanelTab(PREVIEWABLE.includes(artifactMeta(path).kind) ? "preview" : "code");
     getWorkspaceFile(threadId, path)
       .then((r) => setFileContent(r.content))
       .catch(() => setFileContent("Couldn't read file."));
+  }
+
+  function openArtifact(path: string) {
+    setFilesOpen(true);
+    openFile(path);
+  }
+
+  function copyFileContent() {
+    navigator.clipboard?.writeText(fileContent).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  }
+
+  function downloadFile(path: string) {
+    getWorkspaceFile(threadId, path)
+      .then((r) => downloadText(path.split("/").pop() || path, r.content))
+      .catch(() => {});
   }
 
   function newSession() {
@@ -329,27 +443,83 @@ export default function EmberCodePage() {
     </div>
   );
 
+  const activeMeta = activeFile ? artifactMeta(activeFile) : null;
+  const canPreview = activeMeta ? PREVIEWABLE.includes(activeMeta.kind) : false;
+
   const filesPanel = (
-    <div className="flex h-full w-full flex-col border-l border-border-soft bg-surface md:w-80">
+    <div className={`flex h-full w-full flex-col border-l border-border-soft bg-surface ${panelExpanded ? "md:w-[46rem]" : "md:w-80"}`}>
       <div className="flex items-center justify-between border-b border-border-soft px-4 py-3">
-        <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-          <I.files className="text-faint" /> {activeFile ? "File" : "Workspace"}
+        <div className="flex min-w-0 items-center gap-2 text-sm font-medium text-foreground">
+          <I.files className="shrink-0 text-faint" />
+          <span className="truncate">{activeFile ? activeFile.split("/").pop() : "Workspace"}</span>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex shrink-0 items-center gap-1">
           {activeFile ? (
             <button onClick={() => setActiveFile(null)} className="rounded-md px-2 py-1 text-[12px] text-muted hover:text-foreground">Back</button>
           ) : (
             <button onClick={() => refreshFiles()} className="grid h-7 w-7 place-items-center rounded-md text-faint hover:text-foreground" title="Refresh"><I.refresh /></button>
+          )}
+          {activeFile && (
+            <>
+              <button onClick={copyFileContent} className="grid h-7 w-7 place-items-center rounded-md text-faint hover:text-foreground" title="Copy">
+                {copied ? <I.check className="text-accent" /> : <I.copy />}
+              </button>
+              <button onClick={() => downloadFile(activeFile)} className="grid h-7 w-7 place-items-center rounded-md text-faint hover:text-foreground" title="Download"><I.download /></button>
+              <button onClick={() => setPanelExpanded((e) => !e)} className="hidden h-7 w-7 place-items-center rounded-md text-faint hover:text-foreground md:grid" title={panelExpanded ? "Collapse" : "Expand"}>
+                {panelExpanded ? <I.collapse /> : <I.expand />}
+              </button>
+            </>
           )}
           <button onClick={() => setFilesOpen(false)} className="grid h-7 w-7 place-items-center rounded-md text-faint hover:text-foreground" title="Close"><I.close /></button>
         </div>
       </div>
 
       {activeFile ? (
-        <div className="min-h-0 flex-1 overflow-auto" data-lenis-prevent>
-          <p className="sticky top-0 border-b border-border-soft bg-surface px-4 py-2 font-mono text-[11px] text-muted">{activeFile}</p>
-          <pre className="whitespace-pre-wrap p-4 font-mono text-[12px] leading-relaxed text-foreground">{fileContent}</pre>
-        </div>
+        <>
+          {canPreview && (
+            <div className="flex items-center gap-1 border-b border-border-soft px-3 py-2">
+              <button
+                onClick={() => setPanelTab("preview")}
+                className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[12px] transition-colors ${panelTab === "preview" ? "bg-raised text-foreground" : "text-muted hover:text-foreground"}`}
+              >
+                <I.eye /> Preview
+              </button>
+              <button
+                onClick={() => setPanelTab("code")}
+                className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[12px] transition-colors ${panelTab === "code" ? "bg-raised text-foreground" : "text-muted hover:text-foreground"}`}
+              >
+                <I.code /> Code
+              </button>
+            </div>
+          )}
+
+          {canPreview && panelTab === "preview" ? (
+            <div className="min-h-0 flex-1 overflow-auto bg-background" data-lenis-prevent>
+              {activeMeta?.kind === "svg" && (
+                <div className="grid h-full place-items-center p-4">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`data:image/svg+xml;utf8,${encodeURIComponent(fileContent)}`}
+                    alt={activeFile}
+                    className="max-h-full max-w-full"
+                  />
+                </div>
+              )}
+              {activeMeta?.kind === "html" && (
+                <iframe title={activeFile} srcDoc={fileContent} sandbox="allow-scripts" className="h-full w-full border-0 bg-white" />
+              )}
+              {activeMeta?.kind === "markdown" && (
+                <div className="p-4">
+                  <MessageContent content={fileContent} />
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="min-h-0 flex-1 overflow-auto" data-lenis-prevent>
+              <pre className="whitespace-pre-wrap p-4 font-mono text-[12px] leading-relaxed text-foreground">{fileContent}</pre>
+            </div>
+          )}
+        </>
       ) : (
         <div className="min-h-0 flex-1 overflow-y-auto p-2" data-lenis-prevent>
           {files.length === 0 ? (
@@ -376,7 +546,7 @@ export default function EmberCodePage() {
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex bg-background text-foreground">
+    <div className="fixed inset-0 z-50 flex h-dvh w-dvw bg-background text-foreground">
       {/* Desktop sidebar */}
       <aside className="hidden md:block">{sidebar}</aside>
 
@@ -419,7 +589,13 @@ export default function EmberCodePage() {
                     <div key={i} className="space-y-2">
                       {m.steps && m.steps.length > 0 && (
                         <div className="space-y-1">
-                          {m.steps.map((s, si) => <StepRow key={si} step={s} />)}
+                          {m.steps.map((s, si) =>
+                            s.tool === "write_file" && s.target ? (
+                              <ArtifactCard key={si} path={s.target} onOpen={() => openArtifact(s.target)} onDownload={() => downloadFile(s.target)} />
+                            ) : (
+                              <StepRow key={si} step={s} />
+                            )
+                          )}
                         </div>
                       )}
                       {m.content ? (
@@ -450,7 +626,7 @@ export default function EmberCodePage() {
                 >
                   <I.files /> Files
                 </button>
-                <span className="hidden sm:block"><EmberCritter busy={streaming} /></span>
+                <span className="hidden shrink-0 sm:block"><EmberCritter busy={streaming} unit={5} /></span>
               </div>
 
               <div className="rounded-2xl border border-border-soft bg-surface/60 p-2.5 backdrop-blur-xl focus-within:border-border">

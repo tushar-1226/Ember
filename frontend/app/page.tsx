@@ -7,7 +7,7 @@ import { MagicMoment } from "@/components/magic-moment";
 import { FeatureShowcase } from "@/components/feature-showcase";
 import { UnderTheHood } from "@/components/under-the-hood";
 import { EcosystemIntegrations } from "@/components/ecosystem-integrations";
-import { MemoryAnalytics } from "@/components/memory-analytics";
+import { ConstellationOfMoments } from "@/components/constellation-of-moments";
 import { CustomizeBento } from "@/components/customize-bento";
 import { CTATunnel } from "@/components/cta-tunnel";
 import { Footer } from "@/components/footer";
@@ -92,8 +92,8 @@ export default function Home() {
       {/* ---------- Ecosystem Integrations ---------- */}
       <EcosystemIntegrations />
 
-      {/* ---------- Memory Analytics ---------- */}
-      <MemoryAnalytics />
+      {/* ---------- Constellation of Moments ---------- */}
+      <ConstellationOfMoments />
 
       {/* ---------- Customize ---------- */}
       <CustomizeBento />
